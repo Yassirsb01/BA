@@ -95,7 +95,7 @@ def check_db_reachable_bounded(db: "WildlifeDatabase", timeout_sec: float = 6.0)
 # check; they do not follow the pattern of the real six-digit IDs.
 PLACEHOLDER_DEVICE_IDS = {"199999", "999999"}
 
-DETECTION_RADIUS_M = 150  # camera detection radius, as in japan_comparison.py
+DETECTION_RADIUS_M = 100  # camera detection radius, as in japan_comparison.py
 
 
 # =========================================================
@@ -128,6 +128,68 @@ def get_real_detection_hours(db: "WildlifeDatabase", exclude_ids=PLACEHOLDER_DEV
         hours.append(dt.hour + dt.minute / 60.0)
     return hours, n_excluded
 
+
+#--------------------------- Hilfefunktion 17.10.2026
+
+
+def get_camera_entry_events(path, cameras, detection_radius_m):
+    """
+    Count a new entry for each camera whose assumed
+    detection area is entered.
+
+    Initial camera occupancy at t=0 is not counted.
+    Consecutive positions inside the same camera area
+    do not create repeated events.
+
+    Positions are sampled hourly. This does not
+    reproduce the interpolated timing of the map.
+    """
+    if not path:
+        return []
+
+    def cameras_in_range(point):
+        pos = (point["lat"], point["lng"])
+        return [
+            cam for cam in cameras
+            if geodesic(
+                pos, (cam["lat"], cam["lng"])
+            ).meters <= detection_radius_m
+        ]
+
+    # The bear starts at a camera. That is not an arrival.
+    initial_cameras = cameras_in_range(path[0])
+    previous_ids = {
+        cam["device_id"] for cam in initial_cameras
+    }
+
+    events = []
+
+    for point in path[1:]:
+        nearby = cameras_in_range(point)
+        current_ids = {
+            cam["device_id"] for cam in nearby
+        }
+
+        # Only cameras newly entered in this time step.
+        new_cameras = [
+            cam for cam in nearby
+            if cam["device_id"] not in previous_ids
+        ]
+
+        for cam in new_cameras:
+            events.append({
+                "time": point["time"],
+                "lat": point["lat"],
+                "lng": point["lng"],
+                "camera_id": cam["device_id"],
+                "camera_lat": cam["lat"],
+                "camera_lng": cam["lng"],
+            })
+
+        previous_ids = current_ids
+
+    return events
+#Wenn ein Bär mehrere Stunden in demselben Kamerabereich bleibt, entsteht nur ein Eintritt. Verlässt er den Bereich und kommt später zurück, zählt das erneut.
 
 # =========================================================
 # 2) Monte Carlo simulation: virtual camera triggers
@@ -196,20 +258,21 @@ def run_monte_carlo_virtual_detections(
             terrain_cache=terrain_cache,
         )
 
-        run_detections = []  # for this run only, in case it is captured
-        for point in path[1:]:  # [0] is the start point, a camera, so skip it
-            pos = (point["lat"], point["lng"])
-            for cam in cameras:
-                if geodesic(pos, (cam["lat"], cam["lng"])).meters <= detection_radius_m:
-                    t = point["time"]
-                    virtual_hours.append(t.hour + t.minute / 60.0)
-                    run_detections.append({
-                        "time": t, "lat": point["lat"], "lng": point["lng"],
-                        "camera_id": cam.get("device_id"),
-                        "camera_lat": cam["lat"], "camera_lng": cam["lng"],
-                    })
-                    break  # one trigger per time step; do not count several cameras
+        
+        run_detections = get_camera_entry_events(
+            path, cameras, detection_radius_m
+        )
 
+        for event in run_detections:
+            t = event["time"]
+            virtual_hours.append(
+                t.hour + t.minute / 60.0
+            )
+
+#    17.10.2026 : A virtual event is counted when a simulated bear
+#    newly enters a camera area between hourly samples.
+#    The initial occupancy at the starting camera is
+#    excluded. Separate cameras are counted separately.
         if capture_run and captured_run is None and run_idx < capture_search_budget:
             if run_detections:
                 captured_run = {"path": path, "detections": run_detections, "start_camera": start_cam}

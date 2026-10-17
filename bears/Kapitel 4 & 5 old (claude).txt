@@ -950,3 +950,258 @@ von einem einstellbaren Startwert aus; ein Lauf ist damit exakt wiederholbar
 (Anforderung~N5). Die vollständige Berechnung ist zudem an genau einer Stelle umgesetzt und
 wird sowohl vom Kommandozeilenskript als auch von der Oberfläche aufgerufen. Damit ist
 ausgeschlossen, dass zwei Umsetzungen nebeneinander bestehen, deren Ergebnisse auseinanderlaufen.
+
+
+
+
+
+%------------------------------------------------------------------------------------------------------
+\chapter{Diskussion}
+\label{chap:diskussion}
+
+Dieses Kapitel bewertet das Ergebnis. Es gleicht zunächst das entwickelte System gegen die in
+Abschnitt~\ref{sec:anforderungen} aufgestellten Anforderungen ab, ordnet anschließend das
+ermittelte Übereinstimmungsmaß ein und benennt zuletzt die Grenzen der Arbeit.
+
+
+\section{Erfüllung der Anforderungen und Bewertung des Systems}
+\label{sec:anforderungserfuellung}
+
+\subsection{Abgleich gegen die Anforderungen}
+\label{subsec:abgleich}
+
+Tabelle~\ref{tab:anforderungserfuellung} stellt den Erfüllungsgrad je Anforderung dem
+Abschnitt gegenüber, in dem die Umsetzung beschrieben ist. Von den 17~Anforderungen sind 15
+vollständig erfüllt; die beiden übrigen werden im Anschluss einzeln begründet.
+
+\begin{table}[htbp]
+\centering
+\caption{Erfüllung der Anforderungen aus Abschnitt~\ref{sec:anforderungen}}
+\label{tab:anforderungserfuellung}
+\small
+\begin{tabular}{L{1.1cm} L{6.6cm} L{2.4cm} L{3.0cm}}
+\toprule
+\textbf{Nr.} & \textbf{Anforderung} & \textbf{Erfüllung} & \textbf{Abschnitt} \\
+\midrule
+F1 & Gemeinsame Karte & erfüllt & \ref{subsec:aufbau-karte} \\
+F2 & Filterung & erfüllt & \ref{sec:interaktion} \\
+F3 & Eigene Marker und Flächen & erfüllt & \ref{sec:interaktion} \\
+F4 & Zeitlicher Verlauf & erfüllt & \ref{sec:animation} \\
+F5 & Gegenüberstellung von Modell und Beobachtung & erfüllt & \ref{subsec:synchron} \\
+F6 & Erzeugung zusammenhängender Pfade & erfüllt & \ref{subsec:neuimplementierung} \\
+F7 & Statistischer Vergleich & erfüllt & \ref{sec:tagesrhythmus} \\
+F8 & Einsicht in die Rohdaten & erfüllt & \ref{sec:interaktion} \\
+F9 & Sichtbarkeit neuer Aufnahmen & erfüllt & \ref{subsec:anbindung} \\
+\addlinespace
+N1 & Darstellungsleistung & erfüllt & \ref{subsec:aufbau-karte} \\
+N2 & Keine schwergewichtigen Abhängigkeiten & erfüllt & \ref{subsec:anbindung} \\
+N3 & Einheitliche Datenhaltung & erfüllt & \ref{sec:datenhaltung} \\
+N4 & Nachvollziehbare Fehler & erfüllt & \ref{sec:datenhaltung} \\
+N5 & Reproduzierbarkeit & erfüllt & \ref{subsec:bootstrap-umsetzung} \\
+N6 & Übertragbare Konfiguration & teilweise & \ref{sec:datenhaltung} \\
+N7 & Einheitlicher Bildbestand & erfüllt & \ref{sec:datenhaltung} \\
+N8 & Eindeutigkeit der Ortungen & offen & \ref{subsec:technische-grenzen} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{N6 - teilweise erfüllt.} Die Zugangsdaten werden aus Umgebungsvariablen gelesen,
+sodass sich das System ohne Eingriff in den Quelltext auf einem anderen Rechner betreiben
+lässt. Die bisherigen Werte sind jedoch als Rückfallebene noch im Quelltext hinterlegt. Das
+war während der Entwicklung sinnvoll, weil bestehende Arbeitsplätze unverändert weiterliefen,
+muss vor einem produktiven Einsatz aber entfallen. Hinzu kommt, dass das Zugangswort in der
+Versionsgeschichte des Projekts enthalten ist und deshalb unabhängig von dieser Änderung zu
+wechseln ist.
+
+\paragraph{Anmerkung zu N1.} Die Darstellung bleibt auch dann flüssig bedienbar, wenn
+mehrere Datenebenen mit zusammen mehreren zehntausend Objekten gleichzeitig sichtbar sind;
+die Anforderung gilt damit als erfüllt. Diese Beurteilung beruht jedoch auf der Erprobung im
+Betrieb und nicht auf einer systematischen Messung mit festgelegtem Messaufbau. Ein Vergleich
+beider Technologien unter gleichen Bedingungen wurde nicht durchgeführt, da dazu die
+abgelöste Darstellung für denselben Datenumfang hätte nachgebaut werden müssen. Die Aussage
+ist entsprechend als praktische Beobachtung zu lesen.
+
+\paragraph{N8 - offen.} Die in Abschnitt~\ref{subsec:datenhaltung} festgestellte
+Mehrfachspeicherung der Karpaten-Ortungen wird beim Lesen nicht gefiltert. Die Ursache ist
+bekannt und der Eingriff wäre klein; er unterblieb, weil er sich erst spät im Verlauf der
+Arbeit zeigte und eine Änderung an der zentralen Datenzugriffsschicht ohne anschließende
+vollständige Prüfung aller darauf aufsetzenden Auswertungen nicht vertretbar erschien.
+Abschnitt~\ref{subsec:technische-grenzen} ordnet die Auswirkung ein.
+
+\subsection{Bewertung der Entwurfsentscheidungen}
+\label{subsec:bewertung-entwurf}
+
+Zwei Entscheidungen prägen das System stärker als alle übrigen und verdienen eine
+rückblickende Beurteilung.
+
+\paragraph{Die statische Kartenkomponente.} Die Entscheidung gegen eine bidirektionale
+Komponente (Abschnitt~\ref{subsec:architekturentscheidung}) hat sich im Wesentlichen
+bewährt. Der weitaus größte Teil der Interaktion betrifft allein die Darstellung und läuft
+damit ohne jeden Neuaufbau der Seite ab - schneller, als es mit einem Rückkanal der Fall
+wäre, da dieser jedes Mal einen Durchlauf auf der Serverseite ausgelöst hätte.
+
+Der Preis ist an genau einer Stelle spürbar. Das Anlegen neuer Marker und Flächen erfordert
+den Umweg über die Adresszeile und ein tatsächliches Neuladen der Seite. Das funktioniert,
+ist aber umständlicher als ein Rückgabewert, und es setzt voraus, dass eingebettete
+Komponente und umgebende Seite derselben Herkunft zugerechnet werden. Hinter einem
+vorgeschalteten Server mit abweichendem Namen entfiele diese Voraussetzung, und sowohl der
+Zustandserhalt als auch das Zeichnen würden ausfallen - die Karte selbst bliebe nutzbar.
+Dieser Fall ist vor einem Ausrollen zu prüfen.
+
+Rückblickend war die Entscheidung dennoch richtig, weil ihr Hauptargument außerhalb der
+Technik liegt: Das System soll an der Hochschule weitergeführt werden, und eine Anwendung
+ohne getrennten Übersetzungsschritt ist dafür erheblich zugänglicher.
+
+\paragraph{Die Neuimplementierung der Schrittauswahl.} Die Entscheidung, die Auswahl neu zu
+schreiben statt die vorhandene zu erweitern (Abschnitt~\ref{subsec:neuimplementierung}), war
+weniger eine Wahl als eine Folge des Befunds: Es gab keine Auswahl, die sich hätte erweitern
+lassen. Der Nutzen zeigt sich daran, dass die drei wesentlichen Verbesserungen - empirisch
+geschätzte Richtungstreue, Geländegewichtung und lückenlose Richtungsabdeckung - erst
+dadurch möglich wurden.
+
+Der Preis ist, dass nun zwei Umsetzungen der Schritterzeugung nebeneinander bestehen: die
+der Vorarbeit und die dieser Arbeit. Das ist vertretbar, weil die Vorarbeit unverändert
+erhalten bleibt und die Abweichungen dokumentiert sind, erfordert bei künftigen Änderungen
+aber Aufmerksamkeit.
+
+\section{Wissenschaftliche Einordnung des \texorpdfstring{$\Delta$}{Delta}-Ergebnisses}
+\label{sec:einordnung-delta}
+
+\subsection{Was der Wert aussagt}
+\label{subsec:was-delta-aussagt}
+
+Der Überlappungskoeffizient misst, wie stark sich zwei Tagesaktivitätsverteilungen decken.
+Er nimmt den Wert~0 an, wenn sich die Verteilungen nicht überschneiden, und~1, wenn sie
+identisch sind.
+
+Eine erste Einordnung ergibt sich aus der Betrachtung, was ein beliebiges Modell mindestens
+erreichen würde. Eine über den Tag gleichverteilte simulierte Aktivität erzielt gegenüber
+einer deutlich nachtaktiven realen Verteilung bereits einen merklichen Überlappungswert,
+ohne irgendetwas über das Verhalten der Tiere zu wissen. Ein Wert ist deshalb nicht gegen
+null zu bewerten, sondern gegen diesen trivialen Vergleichsmaßstab.
+
+\subsection{Was der Wert nicht aussagt}
+\label{subsec:was-delta-nicht-aussagt}
+
+Drei Abgrenzungen sind wesentlich, weil sie häufig überlesen werden.
+
+Erstens ist eine Übereinstimmung der Tagesrhythmen \emph{keine} Bestätigung der räumlichen
+Pfade. Verglichen wird ausschließlich die zeitliche Dimension. Zwei Modelle mit völlig
+verschiedenem Raumverhalten können denselben Tagesrhythmus erzeugen.
+
+Zweitens stammt der Tagesrhythmus der Simulation nicht aus dem Modellverhalten im
+eigentlichen Sinne, sondern aus der hinterlegten Geschwindigkeitstabelle. Diese enthält je
+Stunde, Geschlecht, Altersklasse und Jahresphase eine Mediangeschwindigkeit und bestimmt
+damit, wann sich ein simuliertes Tier überhaupt bewegt und folglich wann es eine Kamera
+auslösen kann. Die Übereinstimmung prüft damit in erster Linie, ob die an rumänischen
+Bären gemessenen Tagesrhythmen auf die japanischen Verhältnisse übertragbar sind - eine
+sinnvolle Frage, aber eine engere als \enquote{funktioniert das Modell}.
+
+Drittens ist der Vergleich durch die Stichprobe begrenzt. Bei wenigen Dutzend realen
+Zeitpunkten ist das Bootstrap-Intervall breit, und ein Punktschätzer ohne dieses Intervall
+wäre irreführend. Das Ergebnis ist deshalb als explorativer Befund zu lesen und nicht als
+belastbarer Nachweis.
+
+\subsection{Einordnung gegenüber der Literatur}
+\label{subsec:literatureinordnung}
+
+Das Verfahren selbst ist in der Kamerafallenforschung etabliert
+\cite{RidoutLinkie2009, Rowcliffe2014}. Abweichend von der verbreiteten Umsetzung wird hier
+ein umwickelter Gauß-Kern statt eines von-Mises-Kerns verwendet
+(Abschnitt~\ref{subsec:kde-umsetzung}), weshalb die Zahlenwerte mit Ergebnissen aus jener
+Umsetzung nicht unmittelbar vergleichbar sind.
+
+Eine weitere Besonderheit unterscheidet diese Arbeit von der üblichen Anwendung: Dort werden
+zwei \emph{beobachtete} Verteilungen verglichen, etwa zweier Arten am selben Standort. Hier
+steht einer beobachteten eine \emph{simulierte} Verteilung gegenüber. Der Koeffizient misst
+damit nicht die Überschneidung zweier Tiergruppen, sondern die Übereinstimmung zwischen
+Modell und Beobachtung. Das ist eine zulässige, aber eigenständige Verwendung, die bei der
+Interpretation mitzudenken ist.
+
+\section{Limitationen}
+\label{sec:limitationen}
+
+\subsection{Datenbasis}
+\label{subsec:limit-daten}
+
+\paragraph{Stichprobenumfang der Kameradaten.} Die schwerwiegendste Einschränkung ist der
+Umfang der realen Auslösezeiten. Er reicht für eine zusammengefasste Auswertung über alle
+Kameras, nicht aber für eine Betrachtung einzelner Standorte - und gerade die wäre
+interessant, da sich Kameras in Waldlage und in Siedlungsnähe im Tagesrhythmus unterscheiden
+dürften. Die Literatur zur Schätzung von Aktivitätskurven weist darauf hin, dass der
+Stichprobenumfang die Genauigkeit solcher Schätzungen maßgeblich bestimmt
+\cite{Rowcliffe2014}.
+
+\paragraph{Aufstellung der Kameras.} Die Kameras stehen nicht zufällig im Gelände, sondern
+dort, wo Konflikte mit Menschen erwartet werden, also in Siedlungsnähe und an bekannten
+Wechseln. Für die vorliegende Auswertung ist das weniger gravierend als für
+Dichteschätzungen, die eine zufällige Aufstellung ausdrücklich voraussetzen
+\cite{Rowcliffe2008}. Dennoch bleibt die Einschränkung bestehen: Gemessen wird der
+Tagesrhythmus an Orten menschlicher Nutzung, der sich von dem im unberührten Rückzugsgebiet
+unterscheiden kann.
+
+\paragraph{Qualität der Zeitstempel.} Die Zeitstempel stammen aus der automatisierten
+Auswertung der in die Aufnahmen eingeblendeten Textzeile. Fehlerhaft erkannte Gerätekennungen
+sind in der Auswertung ausgeschlossen worden; eine entsprechende Prüfung der Zeitangaben
+selbst fand nicht statt. Ein Teil der Zeitstempel kann daher fehlerhaft sein, ohne dass dies
+auffiele.
+
+\paragraph{Mehrfach vorliegende Ortungen.} Die in Abschnitt~\ref{subsec:datenhaltung}
+beschriebene Doppelung der Karpaten-Ortungen betrifft die Darstellung und abgeleitete
+Kennzahlen. Für den hier ausgewerteten Vergleich ist sie ohne Belang, da dieser auf den
+Kameradaten und der Geschwindigkeitstabelle beruht, nicht auf der Ortungstabelle. Für
+künftige Auswertungen auf dieser Tabelle ist sie jedoch zu beheben.
+
+\subsection{Modellannahmen}
+\label{subsec:limit-modell}
+
+\paragraph{Artunterschied.} Die japanischen Kameras stehen im Verbreitungsgebiet des
+Asiatischen Schwarzbären, während das Bewegungsmodell aus Daten des Europäischen Braunbären
+stammt. Das ist die weitreichendste inhaltliche Vereinfachung dieser Arbeit. Sie ist bewusst
+getroffen, weil für die japanische Art keine vergleichbaren Trajektoriendaten vorlagen, und
+sie wird ausdrücklich nicht als Gleichsetzung der beiden Arten verstanden. Jede Aussage über
+die japanischen Verhältnisse steht unter diesem Vorbehalt.
+
+\paragraph{Übertragene Parameter.} Dasselbe gilt für die Geschwindigkeitstabelle und die
+gemessene Richtungstreue: Beide stammen aus den Karpaten. Die Richtungstreue ist zudem, wie
+in Abschnitt~\ref{subsec:richtungstreue} dargelegt, bei kurzen Schritten vom Messfehler der
+GPS-Ortung überlagert, sodass die dort angegebenen negativen Werte als Obergrenze der
+tatsächlichen Gewundenheit zu lesen sind.
+
+\paragraph{Vereinfachtes Geländemodell.} Die Gewichte der Geländebewertung sind von Hand
+gesetzte Näherungen und keine aus Daten geschätzten Koeffizienten. Eine integrierte
+Step-Selection-Analyse \cite{Avgar2016} würde diese Werte aus beobachteten Schritten
+schätzen, statt sie vorzugeben, und ist damit der methodisch saubere Weg. Er setzt jedoch
+Trajektoriendaten aus dem betrachteten Gebiet voraus, die für Japan gerade fehlen.
+
+Hinzu kommt eine räumliche Grenze: Das lokal vorgehaltene Gelände umfasst die Kamerastandorte
+zuzüglich eines Puffers. Bei Simulationsläufen über 48~Stunden verlassen Bären dieses Gebiet,
+und die Geländegewichtung entfällt dort stillschweigend. Für belastbare Läufe über 24~Stunden
+hinaus müsste der Puffer vergrößert werden.
+
+\subsection{Technische Grenzen des Systems}
+\label{subsec:technische-grenzen}
+
+\paragraph{Zeitstempel als Zeichenketten.} Die Zeitstempel liegen weiterhin als Zeichenketten
+in der Datenbank. Eine Umstellung auf einen echten Zeitstempeltyp hätte eine Datenmigration
+und die Anpassung aller darauf aufsetzenden Abfragen erfordert; der Nutzen wäre vor allem bei
+deutlich größeren Datenmengen spürbar geworden. Die Einschränkung bleibt bestehen: Eine
+Filterung nach Zeiträumen ist auf der Serverseite nur eingeschränkt wirksam.
+
+\paragraph{Mehrfach vorliegende Ortungen.} Die Abfragen auf der Ortungstabelle filtern die
+Doppelungen nicht heraus. Praktisch wirkt sich das derzeit kaum aus, weil dieselbe Position
+zweimal übereinander gezeichnet wird und optisch nicht auffällt. Bedeutsam würde es, sobald
+aus dieser Tabelle Kennzahlen abgeleitet werden - etwa Schrittlängen oder Tagesdistanzen --,
+da dann Schritte der Länge null in die Statistik eingingen.
+
+\paragraph{Abhängigkeit von externen Diensten.} Kartenkacheln, Höhenmodell und die beiden
+Vergleichsdatenquellen stammen von Diensten außerhalb der Hochschule. Jeder davon kann
+ausfallen oder seine Nutzungsbedingungen ändern. Das System ist darauf vorbereitet, da ein
+Ausfall jeweils zu einem Hinweis und nicht zu einem Abbruch führt, aber die betroffene
+Funktion steht dann nicht zur Verfügung.
+
+\paragraph{Keine Mehrbenutzerabsicherung.} Mehrere Personen können gleichzeitig mit dem
+System arbeiten, da die Daten zentral liegen. Schreibende Zugriffe - das Anlegen und Löschen
+von Markern und Flächen - sind jedoch nicht gegen gleichzeitige Bearbeitung abgesichert.
+Bei der zu erwartenden Zahl gleichzeitiger Nutzender in einer Forschungsgruppe ist das
+vertretbar, wäre bei breiterem Einsatz aber nachzuholen.

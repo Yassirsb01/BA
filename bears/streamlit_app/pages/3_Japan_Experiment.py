@@ -138,20 +138,25 @@ def _get_photo_counts():
         return None
 
 
+
 @st.cache_data(ttl=3600, show_spinner=False)
-def _comparison_cached(n_runs: int, seed: int) -> dict:
+def _comparison_cached(
+    n_runs: int,
+    seed: int,
+    detection_radius_m: int,
+) -> dict:
     """
-    The aggregated statistic, cached by its parameters.
-
-    It has to be cached. The call sits inside an expander, and Streamlit
-    runs the body of an expander on every rerun whether it is open or
-    closed. Without a cache, every click anywhere on this page would
-    recompute all simulation runs before anything else could be drawn.
-
-    The computation is deterministic for a given seed, so a cached result
-    is the same result, not an approximation of it.
+    Berechnet die Statistik mit dem eingestellten
+    Kameraradius und speichert das Ergebnis im Cache.
     """
-    return ao.compute_comparison(n_runs=n_runs, hours_per_run=48, seed=seed)
+    return ao.compute_comparison(
+        n_runs=n_runs,
+        hours_per_run=48,
+        detection_radius_m=detection_radius_m,
+        use_terrain=False,
+        seed=seed,
+    )
+
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
@@ -279,6 +284,9 @@ with st.sidebar:
             submitted = st.form_submit_button("Simulate", type="primary")
 
         if submitted:
+            st.session_state["japan_exp2_radius_m"] = int(
+                detection_radius_m
+            )
             st.session_state["japan_exp2_params"] = (
                 selected_cam_id, selected_camera["lat"], selected_camera["lng"],
                 start_time.isoformat(), n_bears, int(hours), use_terrain, int(seed),
@@ -299,7 +307,13 @@ if "japan_exp2_params" not in st.session_state:
 else:
     (cam_id, lat, lng, start_time_iso, n_bears, hours,
      use_terrain, seed) = st.session_state["japan_exp2_params"]
+
     real_events = st.session_state.get("japan_exp2_real_events", [])
+
+    active_radius_m = st.session_state.get(
+        "japan_exp2_radius_m", 100
+    )
+
     start_camera = {"device_id": cam_id, "lat": lat, "lng": lng}
 
     with st.spinner(f"Simulating {n_bears} bears from camera {cam_id}..."):
@@ -311,11 +325,13 @@ else:
         st.warning(terrain_warning)
 
     jm.render_japan_map(
+        
         cameras=cameras, start_camera=start_camera, bears=bears,
         # None rather than {} when the database is unavailable; see
         # render_japan_map(). {} would mean "reachable, but zero
         # photographs everywhere".
         real_events=real_events, photo_counts=_get_photo_counts() if db_ok else None,
+        detection_radius_m=active_radius_m,
         height=850,
     )
 
@@ -353,15 +369,26 @@ else:
     # ============================================================
     with st.expander("Deeper analysis: statistical comparison across all cameras"):
         st.caption(
-            "Complements the animation above with a stricter, aggregated comparison: "
-            "many simulated runs across ALL cameras against all real detections, "
-            "reduced to one figure with an uncertainty range (overlap coefficient "
-            "with a bootstrap confidence interval)."
+            f"This analysis compares real photo times with simulated "
+            f"camera entries across all 20 cameras. "
+            f"Detection radius: {active_radius_m} m. "
+            f"Each simulation run lasts 48 hours. "
+            f"Terrain weighting is disabled for this comparison. "
+            f"The selected camera and number of bears in the animation "
+            f"do not affect this statistical analysis."
         )
-        n_runs = st.slider("Number of simulation runs (for the statistic)", 50, 500, 150, step=50)
+
+        n_runs = st.slider(
+            "Number of simulation runs (for the statistic)",
+            50, 500, 300, step=50
+        )
 
         with st.spinner(f"Computing the statistic over {n_runs} runs..."):
-            stat_result = _comparison_cached(int(n_runs), int(seed))
+            stat_result = _comparison_cached(
+                int(n_runs),
+                int(seed),
+                int(active_radius_m),
+            )
 
         if not stat_result["db_ok"]:
             st.info("MariaDB not reachable; no statistical comparison possible.")
@@ -371,7 +398,10 @@ else:
             col1, col2, col3 = st.columns(3)
             col1.metric("Overlap coefficient", f"{stat_result['delta']:.2f}")
             col2.metric("95 % confidence interval", f"[{stat_result['ci_low']:.2f}, {stat_result['ci_high']:.2f}]")
-            col3.metric("Real / simulated detections", f"{stat_result['n_real']} / {stat_result['n_sim']}")
+            col3.metric(
+                "Real photos / virtual camera entries",
+                f"{stat_result['n_real']} / {stat_result['n_sim']}"
+            )
 
             st.caption(
                 "The overlap coefficient runs from 0 to 1. It is the share of the "

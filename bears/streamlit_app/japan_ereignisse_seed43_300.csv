@@ -1,0 +1,6 @@
+﻿radius_m,sim_runs,seed,real_n,point_n,entry_n,entry_camera_events,runs_with_entry,delta_points,delta_entries,point_n_first_6h,point_n_first_24h,point_n_after_24h,point_n_near_noninitial_camera,entry_n_to_noninitial_camera
+50,300,43,50,530,129,138,93,0.69977,0.64052,405,509,21,183,110
+100,300,43,50,1186,224,257,131,0.66928,0.59767,781,1094,92,429,207
+150,300,43,50,1798,281,342,150,0.64125,0.57656,1032,1596,202,685,261
+200,300,43,50,2369,368,445,173,0.62490,0.57615,1187,2038,331,960,315
+300,300,43,50,3607,460,577,186,0.60940,0.61186,1395,2851,756,1309,364

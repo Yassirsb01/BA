@@ -184,19 +184,15 @@ def _load_carpathian_csv_tracking_cached() -> pd.DataFrame:
     f1 = os.path.join(csv_dir, "1_bears_RO.csv")
     f2 = os.path.join(csv_dir, "2_bears_RO_seasons.csv")
 
-    if not os.path.exists(f1):
+    # 2_bears_RO_seasons.csv is a SUBSET of 1_bears_RO.csv, not a
+    # complementary set of GPS measurements. Both files already carry
+    # Season / Season2. Concatenating them doubles overlapping fixes.
+    # Prefer the full dataset, and only use the smaller file as fallback.
+    source_file = f1 if os.path.isfile(f1) else f2
+    if not os.path.isfile(source_file):
         return pd.DataFrame()
 
-    df1 = _normalize_tracking_columns(pd.read_csv(f1))
-
-    df2 = pd.DataFrame()
-    if os.path.exists(f2):
-        try:
-            df2 = _normalize_tracking_columns(pd.read_csv(f2))
-        except Exception:
-            df2 = pd.DataFrame()
-
-    df = pd.concat([df1, df2], ignore_index=True) if not df2.empty else df1.copy()
+    df = _normalize_tracking_columns(pd.read_csv(source_file))
     if "timestamp" in df.columns:
         df = df.sort_values("timestamp")
     return df.reset_index(drop=True)

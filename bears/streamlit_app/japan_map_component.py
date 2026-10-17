@@ -509,6 +509,7 @@ def render_japan_map(
       playing:false, speed:60, tracks:[], startTime:null, endTime:null, currentTime:null,
       rafId:null, lastWallClock:null, activeCameraIds:new Set(), loggedDetections:[],
       lastRenderWall:0,   // throttling of the geometry updates, see animLoop()
+      initialDetectionFrame:true,
     }};
 
     function parseTime(v) {{ return v ? Date.parse(String(v).replace(' ','T')) : NaN; }}
@@ -556,6 +557,7 @@ def render_japan_map(
     function fmtDate(t) {{ return new Date(t).toLocaleDateString('en-GB', {{day:'2-digit', month:'2-digit', year:'numeric'}}); }}
 
     function updateCameraFlashAndLog(t) {{
+      const ignoreInitial = animState.initialDetectionFrame;
       const nowActive = new Set();
       const newLogEntries = [];
       animState.tracks.forEach(tr => {{
@@ -574,13 +576,14 @@ def render_japan_map(
         const wasActive = animState.activeCameraIds.has(id);
         if (shouldBeActive !== wasActive) {{
           map.setFeatureState({{source:'cameras', id: f.id}}, {{active: shouldBeActive}});
-          if (shouldBeActive) {{
+          if (shouldBeActive && !ignoreInitial) {{
             const timeStr = fmtClock(t);
             animState.loggedDetections.unshift(`${{timeStr}} Uhr &middot; Kamera ${{id}}`);
           }}
         }}
       }});
       animState.activeCameraIds = nowActive;
+      animState.initialDetectionFrame = false;
 
       const list = document.getElementById('log-list');
       if (list) {{
@@ -670,6 +673,8 @@ def render_japan_map(
       if (animState.currentTime >= animState.endTime) {{
         animState.currentTime = animState.startTime;
         animState.loggedDetections = [];
+        animState.activeCameraIds = new Set();
+        animState.initialDetectionFrame = true;
       }}
       animState.playing = true; animState.lastWallClock = null;
       renderFrame();
@@ -744,6 +749,8 @@ def render_japan_map(
         if (animState.startTime!=null) {{
           animState.currentTime = animState.startTime;
           animState.loggedDetections = [];
+          animState.activeCameraIds = new Set();
+          animState.initialDetectionFrame = true;
           renderFrame();
         }}
       }});

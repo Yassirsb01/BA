@@ -778,6 +778,8 @@ class WildlifeDatabase:
             "data/animal_data/carpathian_bears/1_bears_RO.csv",
             "data/animal_data/carpathian_bears/2_bears_RO_seasons.csv"
         ]
+        # The second CSV is already contained in the first; not additive.
+        tracking_files = [p for p in tracking_files if os.path.isfile(p)][:1]
         
         all_data = []
         
@@ -968,7 +970,7 @@ class WildlifeDatabase:
                 bear_id, 
                 sex,
                 age,
-                COUNT(*) as point_count
+                COUNT(DISTINCT timestamp, x, y) as point_count
             FROM bears_tracking
             WHERE bear_id IS NOT NULL
             GROUP BY bear_id, sex, age
@@ -1009,10 +1011,17 @@ class WildlifeDatabase:
             
             results = self.execute_query(query, params)
             df = pd.DataFrame(results) if results else pd.DataFrame()
-            
+
+            # Preexisting DB rows can still contain duplicate GPS fixes
+            # from the older CSV concatenation. Deduplicate only identical
+            # bear + timestamp + projected coordinate measurements.
+            fix_key = ['bear_id', 'timestamp', 'x', 'y']
+            if not df.empty and all(k in df.columns for k in fix_key):
+                df = df.drop_duplicates(subset=fix_key, keep='first').reset_index(drop=True)
+
             if not df.empty and 'timestamp' in df.columns:
                 df['timestamp'] = pd.to_datetime(df['timestamp'])
-                
+
             return df
         except Exception as e:
             print(f"!!! Error getting bear data: {e}")
@@ -1303,7 +1312,11 @@ class WildlifeDatabase:
                 MIN(lng) as min_lng,
                 MAX(lng) as max_lng,
                 COUNT(DISTINCT date(timestamp)) as day_count
-            FROM bears_tracking
+            FROM (
+                SELECT DISTINCT bear_id, season, sex, age,
+                                timestamp, x, y, lat, lng
+                FROM bears_tracking
+            ) AS bears_tracking
             """
             params = []
             
@@ -1467,6 +1480,8 @@ def migrate_all_csv_to_mariadb(limit_bear_records=1000):
         "data/animal_data/carpathian_bears/1_bears_RO.csv",
         "data/animal_data/carpathian_bears/2_bears_RO_seasons.csv"
     ]
+    # The second CSV is already contained in the first; not additive.
+    tracking_files = [p for p in tracking_files if os.path.isfile(p)][:1]
     
     all_data = []
     for file_path in tracking_files:
