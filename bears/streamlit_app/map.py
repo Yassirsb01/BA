@@ -17,11 +17,70 @@ browser without reloading the page.
 """
 
 import streamlit as st
+import json
+import secrets
 from datetime import datetime
 
 from status_widget import display_new_images_status, database_reachable
 import maplibre_component as ml
 from geojson_table_helper import geojson_to_dataframe
+
+_DRAWING_SAVE_BRIDGE = r"""<script>
+(() => {
+  // Executed in the main Streamlit document, not inside the MapLibre iframe.
+  // It receives a message from the existing static components.html() map.
+  const token = __SAVE_TOKEN__;
+  const previous = window.__wildlifeDrawingSaveHandler;
+  if (previous) window.removeEventListener('message', previous);
+
+  function validCoordinate(lng, lat) {
+    return Number.isFinite(lng) && Number.isFinite(lat)
+      && Math.abs(lng) <= 180 && Math.abs(lat) <= 90;
+  }
+
+  function onDrawingSave(event) {
+    const msg = event.data;
+    if (!msg || typeof msg !== 'object'
+        || msg.type !== 'wildlife-drawing-save' || msg.token !== token) return;
+
+    const url = new URL(window.location.href);
+    if (msg.kind === 'marker') {
+      const lat = Number(msg.lat);
+      const lng = Number(msg.lng);
+      if (!validCoordinate(lng, lat)) return;
+      url.searchParams.set('new_marker_lat', lat.toFixed(6));
+      url.searchParams.set('new_marker_lng', lng.toFixed(6));
+      url.searchParams.delete('new_polygon_name');
+      url.searchParams.delete('new_polygon_coords');
+    } else if (msg.kind === 'polygon') {
+      const pts = msg.coords;
+      const name = typeof msg.name === 'string' ? msg.name.trim() : '';
+      if (!name || name.length > 128 || !Array.isArray(pts)
+          || pts.length < 3 || pts.length > 500
+          || !pts.every(p => Array.isArray(p) && p.length === 2
+            && validCoordinate(Number(p[0]), Number(p[1])))) return;
+      url.searchParams.set('new_polygon_name', name);
+      url.searchParams.set('new_polygon_coords', JSON.stringify(pts));
+      url.searchParams.delete('new_marker_lat');
+      url.searchParams.delete('new_marker_lng');
+    } else {
+      return;
+    }
+
+    // Acknowledge that the request reached the main document.
+    // Do not confuse this with a successful MariaDB write.
+    if (event.source) {
+      event.source.postMessage({type: 'wildlife-drawing-accepted', token}, '*');
+    }
+    // Navigation from the main page works without iframe top-navigation rights.
+    // Existing st.query_params code persists the drawing in MariaDB.
+    window.location.assign(url.toString());
+  }
+
+  window.__wildlifeDrawingSaveHandler = onDrawingSave;
+  window.addEventListener('message', onDrawingSave);
+})();
+</script>"""
 
 st.set_page_config(page_title="Wildlife Movement Analysis System", layout="wide")
 
@@ -408,6 +467,18 @@ if load_external:
 # ============================================================
 # Render the map (empty on start; selection and zoom happen on the map)
 # ============================================================
+# One-way browser message bridge for saving map drawings. This is not a
+# bidirectional Streamlit component. The existing map remains in
+# components.html(); Python still receives drawings via query parameters.
+if "drawing_save_token" not in st.session_state:
+    st.session_state["drawing_save_token"] = secrets.token_urlsafe(24)
+st.html(
+    _DRAWING_SAVE_BRIDGE.replace(
+        "__SAVE_TOKEN__", json.dumps(st.session_state["drawing_save_token"])
+    ),
+    unsafe_allow_javascript=True,
+)
+
 ml.render_maplibre(
     japan=japan_data,
     carpathian=carpathian_data,
@@ -420,6 +491,7 @@ ml.render_maplibre(
     zoom=_restored_zoom,
     initial_visible=_restored_visible,  # last visible layers, otherwise defaults
     refit_on_load=_refit_groups,      # layers with changed filters: fly to them
+    save_token=st.session_state["drawing_save_token"],
     height=800,
 )
 

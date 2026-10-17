@@ -33,6 +33,33 @@ from geojson_table_helper import geojson_to_dataframe
 st.set_page_config(page_title="Bewegungs-Animation", layout="wide")
 
 
+def _deduplicate_gps_points(carpathian_data: dict) -> dict:
+    """Remove repeated fixes only for the animation, without modifying source data.
+
+    Equal bear ID, timestamp and coordinates represent the same GPS fix.
+    Distinct positions at the same timestamp are deliberately left untouched.
+    """
+    points = carpathian_data.get("points", {})
+    features = points.get("features", [])
+    seen = set()
+    unique_features = []
+    for feature in features:
+        props = feature.get("properties", {})
+        coords = tuple(feature.get("geometry", {}).get("coordinates", []))
+        key = (props.get("bear_id"), props.get("timestamp"), coords)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique_features.append(feature)
+
+    if len(unique_features) == len(features):
+        return carpathian_data
+    return {
+        **carpathian_data,
+        "points": {**points, "features": unique_features},
+    }
+
+
 # ============================================================
 # Determine the data source, for display on the map
 # ============================================================
@@ -90,6 +117,7 @@ def _load_and_simulate(bear: str, date_str: str, seasons_key: tuple,
         map_type="Movement Paths",
         max_points_per_bear=50000,  # one day, so no reduction is needed
     )
+    carpathian_data = _deduplicate_gps_points(carpathian_data)
 
     synced = sync.build_synced_geojson(
         carpathian_data.get("points", {}),

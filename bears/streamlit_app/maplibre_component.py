@@ -103,6 +103,7 @@ def render_maplibre(
     initial_visible: set = None,
     refit_on_load: set = None,
     height: int = 650,
+    save_token: str = "",
 ):
     japan = japan or {}
     carpathian = carpathian or {}
@@ -142,6 +143,7 @@ def render_maplibre(
 
     styles_js = json.dumps(_build_styles())
     refit_json = json.dumps(sorted(refit_on_load)) if refit_on_load else "[]"
+    save_token_json = json.dumps(save_token)
 
     data = {
         "jp_deterrents": json.dumps(jp_deterrents),
@@ -278,6 +280,7 @@ def render_maplibre(
 
   <script>
     const STYLES = {styles_js};
+    const SAVE_TOKEN = {save_token_json};
     // Layers whose data changed since the last render, for example a
     // different bear or period. On load the map navigates to them
     // automatically, even if the layer was already visible.
@@ -754,24 +757,45 @@ def render_maplibre(
       }}
     }}
 
+    // Static components.html iframe: cannot read or navigate the parent URL.
+    // Send just the drawing; a trusted main-page st.html script updates the URL.
+    let drawingSavePending = false;
+    window.addEventListener('message', e => {{
+      if (e.source !== window.parent || !e.data ||
+          e.data.type !== 'wildlife-drawing-accepted' || e.data.token !== SAVE_TOKEN) return;
+      drawingSavePending = false;
+      setDrawHint('Saving in database...');
+    }});
+
     function saveDrawing() {{
-      try {{
-        const parentWin = window.parent;
-        const url = new URL(parentWin.location.href);
-        if (drawState.mode === 'marker' && drawState.pendingMarker) {{
-          url.searchParams.set('new_marker_lat', drawState.pendingMarker.lat.toFixed(6));
-          url.searchParams.set('new_marker_lng', drawState.pendingMarker.lng.toFixed(6));
-        }} else if (drawState.mode === 'polygon' && drawState.polygonPoints.length >= 3) {{
-          const nameInput = document.getElementById('draw-name-input');
-          url.searchParams.set('new_polygon_name', nameInput.value.trim());
-          url.searchParams.set('new_polygon_coords', JSON.stringify(drawState.polygonPoints));
-        }} else {{
-          return;
-        }}
-        parentWin.location.href = url.toString(); // real navigation, triggers a Streamlit rerun
-      }} catch (e) {{
-        setDrawHint('Saving failed (cross-origin?). Reload the page manually and try again.');
+      if (drawingSavePending) return;
+      const msg = {{ type: 'wildlife-drawing-save', token: SAVE_TOKEN }};
+      if (drawState.mode === 'marker' && drawState.pendingMarker) {{
+        msg.kind = 'marker';
+        msg.lat = drawState.pendingMarker.lat;
+        msg.lng = drawState.pendingMarker.lng;
+      }} else if (drawState.mode === 'polygon' && drawState.polygonPoints.length >= 3) {{
+        const nameInput = document.getElementById('draw-name-input');
+        msg.kind = 'polygon';
+        msg.name = nameInput.value.trim();
+        msg.coords = drawState.polygonPoints;
+      }} else {{
+        return;
       }}
+      if (!SAVE_TOKEN) {{
+        setDrawHint('Save unavailable. Reload the application.');
+        return;
+      }}
+      drawingSavePending = true;
+      setDrawHint('Sending drawing to Streamlit...');
+      document.getElementById('draw-save-btn').disabled = true;
+      window.parent.postMessage(msg, '*');
+      window.setTimeout(() => {{
+        if (!drawingSavePending) return;
+        drawingSavePending = false;
+        setDrawHint('No response from the main page. Reload and try again.');
+        updateSaveButtonState();
+      }}, 5000);
     }}
 
     function wireDrawingControls() {{
