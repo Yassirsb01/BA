@@ -7,11 +7,34 @@
 \onehalfspacing
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{array}
+% Linksbuendige Spalte mit fester Breite (fuer Tabellen mit viel Text)
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 \usepackage{amsmath}
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{hyperref}
 \usepackage{caption}
+\usepackage{csquotes}
+\usepackage[backend=biber, style=numeric, sorting=none]{biblatex}
+\usepackage{titlesec}
+\usepackage{tikz}
+\usetikzlibrary{positioning,fit,calc,arrows.meta,shapes.geometric,backgrounds}
+\usepackage{float}
+\hypersetup{hidelinks}
+\usepackage{subcaption}
+\usepackage{wrapfig}
+\usetikzlibrary{decorations.pathreplacing}
+% ---- Kapitelüberschriften kompakt ----
+\titleformat{\chapter}[hang]
+  {\normalfont\LARGE\bfseries}{\thechapter\quad}{0pt}{}
+\titlespacing*{\chapter}{0pt}{0pt}{20pt}
+% ---- Literatur und Quellen
+\addbibresource{Literatur.bib}
+
+% ---- Gliederungstiefe: dritte Ebene nummerieren, Inhaltsverzeichnis bis Ebene zwei ----
+\setcounter{secnumdepth}{2}
+\setcounter{tocdepth}{2}
 
 % ---- Code-Listing-Style (fuer Python/JS-Ausschnitte) ----
 \lstdefinestyle{code}{
@@ -26,6 +49,16 @@
     backgroundcolor=\color{gray!5}
 }
 \lstset{style=code}
+\lstdefinelanguage{JavaScript}{
+  keywords={const,let,var,function,return,if,else,for,of,in,new,this,typeof,try,catch,=>},
+  keywordstyle=\color{blue}\bfseries,
+  ndkeywords={true,false,null,undefined},
+  comment=[l]{//}, morecomment=[s]{/*}{*/},
+  morestring=[b]', morestring=[b]",
+  sensitive=true
+}
+\renewcommand{\lstlistingname}{Quelltext}
+\emergencystretch=2em
 
 \begin{document}
 
@@ -57,300 +90,2589 @@
 \tableofcontents
 \newpage
 
-% ==================== KAPITEL ====================
-% claude begin
+% ====================================================================
+% ====================================================================
 \chapter{Einleitung}
+\label{chap:einleitung}
 
 \section{Motivation und Problemstellung}
+\label{sec:motivation}
 
-Die Erforschung und der Schutz frei lebender Wildtierpopulationen sind zunehmend auf digitale Werkzeuge angewiesen, die räumliche und zeitliche Bewegungsmuster sichtbar und analysierbar machen. Insbesondere bei großen, potenziell konfliktträchtigen Arten wie Bären fallen im Rahmen von Forschungsprojekten heterogene Datenquellen an: GPS-Telemetriedaten frei lebender Tiere, automatisiert erfasste Kamerabilder von Abschreckungssystemen sowie modellbasierte Simulationsdaten zur Vorhersage von Bewegungsmustern. Damit diese Daten für ein Forschungsteam nutzbar werden, müssen sie nicht nur gespeichert, sondern auch verständlich visualisiert werden — im Regelfall auf einer interaktiven Karte, die räumliche Zusammenhänge intuitiv erfassbar macht.
+Wer frei lebende Wildtiere erforscht oder schützt, braucht heute digitale Werkzeuge, die
+Bewegungsmuster in Raum und Zeit sichtbar machen. Bei großen Arten wie Bären, bei denen es
+zu Konflikten mit Menschen kommen kann, fallen dabei sehr unterschiedliche Daten an:
+GPS-Daten besenderter Tiere, automatisch erfasste Kamerabilder und Pfade aus
+Bewegungsmodellen. Damit ein Forschungsteam damit arbeiten kann, müssen diese Daten nicht
+nur gespeichert, sondern auch verständlich dargestellt werden -- im Regelfall auf einer
+interaktiven Karte, auf der räumliche Zusammenhänge unmittelbar zu sehen sind.
 
-Im Rahmen einer vorausgegangenen Kooperation zwischen der Ostbayerischen Technischen Hochschule (OTH) Regensburg und einer Partnerhochschule wurden im Kontext der Bärenforschung mehrere eigenständige Teilsysteme entwickelt: ein System zur Verwaltung und Kartierung von Bärenabschreckungsmaßnahmen in Japan \cite{TODO:LorenzBA}, ein Modell zur Simulation von Bärenbewegungen auf Basis realer GPS-Trajektorien in den Karpaten \cite{TODO:BreuBA}, sowie ein System zur automatisierten Extraktion von Wildtierbildern aus E-Mail-Postfächern \cite{TODO:LelchatBA}. Diese Teilsysteme entstanden im Rahmen separater studentischer Arbeiten, wurden isoliert voneinander implementiert und nutzten für die Kartendarstellung die JavaScript-Bibliothek Leaflet.js in Verbindung mit deren Python-Wrapper Folium.
+Die beiden Datensätze dieser Arbeit sind nicht nur unterschiedlich formatiert, sie sind von
+grundlegend verschiedener Art. Aus einer Langzeitstudie in den rumänischen Karpaten liegen
+\emph{Trajektorien} vor: rund 60.000 GPS-Ortungen von 13 besenderten Europäischen
+Braunbären (\emph{Ursus arctos}) über vier Jahre. Jede Ortung gehört zu einem bekannten
+Tier und steht in zeitlicher Reihenfolge zu dessen übrigen Ortungen.
 
-Mit wachsendem Datenumfang zeigten sich jedoch Grenzen dieses Ansatzes: Folium/Leaflet rendert Geodaten primär über das Document Object Model (DOM) bzw. SVG, was bei einer größeren Anzahl gleichzeitig dargestellter Punkte, Pfade und Flächen zu spürbaren Performanceeinbußen im Browser führt. Zudem existierte für jedes Teilsystem eine eigene Kartenansicht, eigene Filterlogik und teilweise eine eigene Datenhaltung, wodurch eine gemeinsame, systemübergreifende Betrachtung der Daten nicht möglich war. Für ein Forschungsteam, das die Bewegungsmuster realer Tiere mit simulierten Alternativpfaden und den Standorten von Abschreckungsmaßnahmen in Bezug setzen möchte, stellt diese Fragmentierung eine erhebliche Einschränkung dar.
+Aus der japanischen Region Fukushima liegen dagegen \emph{Detektionen} vor: zeitgestempelte
+Fotoauslösungen fest installierter Wildtierkameras. Welches einzelne Tier ausgelöst hat, ist
+nicht bekannt, und damit auch nicht, ob zwei Aufnahmen zum selben Tier gehören. Dieser
+Unterschied ist für die Arbeit zentral, weil er bestimmt, welche Auswertungen möglich sind:
+Pfade lassen sich nur auf der einen Seite vergleichen, Tagesrhythmen dagegen auf beiden.
+
+An der Ostbayerischen Technischen Hochschule (OTH) Regensburg entstanden in einer
+Kooperation mit der Universität Aizu in Japan drei eigenständige Teilsysteme. Das erste ist
+eine Kartenanwendung mit zwei getrennten Seiten: eine für die Gerätestandorte und die dort
+erfassten Kameraaufnahmen in der Region Aizu (Präfektur Fukushima, Honshū), eine für die
+Bewegungspfade der Karpatenbären \cite{LorenzBA}. Das zweite ist ein Modell, das
+Bärenbewegungen auf Grundlage der realen GPS-Daten aus den Karpaten simuliert
+\cite{BreuBA}. Das dritte holt Wildtierbilder automatisch aus einem gemeinsam genutzten
+E-Mail-Postfach \cite{LelchatBA}. Alle drei entstanden in getrennten studentischen Arbeiten,
+und nur das erste hatte eine Benutzeroberfläche.
+
+Daraus ergeben sich drei Einschränkungen.
+
+Erstens ließen sich die Daten nur getrennt betrachten. Die Streamlit-Anwendung schaltete
+über die Seitenleiste zwischen den beiden Seiten um, und jede erzeugte ihre eigene,
+unabhängige Karte auf Basis der JavaScript-Bibliothek Leaflet, eingebunden über deren
+Python-Wrapper Folium. Gerätestandorte und Bewegungspfade lagen nie auf derselben Karte.
+
+Zweitens war die Technik nicht für die angestrebte Datenmenge gedacht. Sollen alle Bestände
+gleichzeitig auf einer Karte liegen, steigt die Zahl der dargestellten Objekte stark an.
+Leaflet legt für jedes Objekt ein eigenes Element im Dokumentbaum des Browsers an, und der
+Aufwand wächst mit deren Zahl.
+
+Drittens brachte jede der drei Arbeiten ihre eigene Form der Datenhaltung mit. Für sich
+genommen war das jeweils angemessen, erschwert aber einen einheitlichen Zugriff.
+
+Das Bewegungsmodell lag zudem nur als eigenständiger Quelltext vor, denn Gegenstand jener
+Arbeit war das Modell selbst und nicht seine Einbindung in eine Anwendung. Die erzeugten
+Pfade waren damit zwar vorhanden, aber auf keiner Karte sichtbar und nicht gegen die realen
+Daten prüfbar. Genau hier setzt diese Arbeit an: Ein Forschungsteam, das reale
+Bewegungsmuster mit modellierten Pfaden und mit den Standorten der Geräte in Beziehung
+setzen will, kann das im Ausgangszustand nicht.
 
 \section{Zielsetzung der Arbeit}
+\label{sec:zielsetzung}
 
-Ziel dieser Arbeit ist die Konzeption und Implementierung einer einheitlichen, performanten Kartenplattform, die die genannten Teilsysteme in einer gemeinsamen, mehrschichtigen (Multi-Layer) Visualisierung zusammenführt. Dabei sollen mehrere Teilziele erreicht werden:
+Ziel dieser Arbeit ist eine einheitliche Kartenplattform, die die drei Teilsysteme in einer
+gemeinsamen, mehrschichtigen (Multi-Layer) Darstellung zusammenführt. Dazu kommen Werkzeuge,
+mit denen sich simulierte Bewegungen gegen reale Beobachtungsdaten prüfen lassen. Im
+Einzelnen sind das die folgenden Teilziele.
+
+\subsection*{Integration und technische Basis}
 
 \begin{itemize}
-    \item \textbf{Technologiewechsel der Kartenvisualisierung:} Ablösung der bisherigen Folium/Leaflet-basierten Kartendarstellung durch MapLibre GL JS, eine WebGL-basierte, vektorbasierte Open-Source-Kartenbibliothek, um die Darstellungsperformance bei großen Datenmengen signifikant zu verbessern.
-    \item \textbf{Systemintegration:} Zusammenführung der drei bestehenden Teilsysteme — Bärenabschreckung Japan, Bärenbewegungssimulation Karpaten und Bildextraktionssystem — in einer gemeinsamen Anwendung mit einer einzigen, gemeinsam genutzten Kartenkomponente, auf der einzelne Datenebenen unabhängig voneinander ein- und ausgeblendet werden können.
-    \item \textbf{Vereinheitlichung der Datenhaltung:} Migration und Konsolidierung der zuvor teils lokal (SQLite, CSV-Dateien) gehaltenen Daten in eine zentrale, kollaborativ nutzbare MariaDB-Datenbank, um konsistenten Mehrbenutzerzugriff und performante serverseitige Filterung zu ermöglichen.
-    \item \textbf{Interaktions- und Filterkonzept:} Entwicklung eines nutzerfreundlichen Filter- und Layer-Konzepts, das es Forschenden erlaubt, einzelne Bären, Zeiträume, Saisons und Darstellungsarten auszuwählen, ohne dass dabei die gesamte Anwendung neu geladen werden muss.
+    \item \textbf{Technologiewechsel der Kartenvisualisierung:} Die bisherige Darstellung
+    über Folium und Leaflet wird durch MapLibre GL JS abgelöst, eine quelloffene
+    Kartenbibliothek, die auf WebGL und Vektorkacheln aufsetzt. Damit sollen große
+    Datenmengen flüssig darstellbar werden und zusätzliche Darstellungsformen möglich sein,
+    etwa Satellitenkarten und dreidimensionales Gelände.
+
+    \item \textbf{Systemintegration:} Die drei Teilsysteme werden in einer Anwendung mit
+    einer einzigen, gemeinsam genutzten Kartenkomponente zusammengeführt, auf der sich
+    einzelne Datenebenen unabhängig voneinander ein- und ausblenden lassen. Bewegungsmodell
+    und Bildextraktion waren über die Oberfläche bisher gar nicht erreichbar; ihre
+    Einbindung ist deshalb ein wesentlicher neuer Teil dieser Arbeit.
+
+    \item \textbf{Vereinheitlichung der Datenhaltung:} Die bisher teils lokal gehaltenen
+    Daten werden in eine zentrale MariaDB-Datenbank überführt, damit mehrere Personen
+    gleichzeitig damit arbeiten können und sich serverseitig filtern lässt.
+
+    \item \textbf{Interaktions- und Filterkonzept:} Forschende sollen einzelne Bären,
+    Zeiträume, Jahresphasen und Darstellungsarten auswählen können. Außerdem wird die aus
+    dem Ausgangssystem bekannte Funktion wiederhergestellt, eigene Marker und Flächen auf
+    der Karte anzulegen und wieder zu entfernen.
 \end{itemize}
 
-Nicht Ziel dieser Arbeit ist die Weiterentwicklung der zugrunde liegenden fachlichen Modelle (z.\,B. des Bewegungssimulationsmodells) selbst; diese werden als gegeben angenommen und lediglich in die neue Plattform integriert.
+\subsection*{Analyse- und Validierungswerkzeuge}
+
+\begin{itemize}
+    \item \textbf{Bewegungsanimation:} Eine Animationskomponente macht den zeitlichen
+    Verlauf einer Bewegung abspielbar, statt ihn nur als fertige Linie zu zeigen. Wichtig
+    ist dabei die \emph{synchrone} Gegenüberstellung: Zu einer ausgewählten realen
+    Trajektorie werden die Alternativen des Modells für denselben Bären, denselben Tag und
+    dieselben Zeitpunkte angezeigt. Abweichungen zwischen Modell und Beobachtung werden so
+    direkt auf der Karte sichtbar.
+
+    \item \textbf{Übertragung des Bewegungsmodells auf die japanischen Kameradaten:} Die
+    Schrittauswahl des Modells wird erweitert, damit es auch in einer dichter besiedelten
+    und stärker erschlossenen Landschaft plausible Pfade erzeugt. Dazu gehören eine aus
+    Daten geschätzte Richtungsträgheit, eine Gewichtung des Geländes anhand von
+    OpenStreetMap-Daten und eine überarbeitete Richtungswahl.
+
+    \item \textbf{Statistische Validierung über den Tagesrhythmus:} Da sich aus einzelnen
+    Kameradetektionen keine Pfade rekonstruieren lassen, wird der Vergleich auf die Zeit
+    verlagert. Über den Überlappungskoeffizienten $\Delta$ nach Ridout und Linkie
+    \cite{RidoutLinkie2009} wird gemessen, wie stark die Tagesaktivität simulierter Bären
+    mit der der realen japanischen Fotoauslösungen übereinstimmt, zusammen mit einer
+    Unsicherheitsangabe über ein Bootstrap-Verfahren.
+\end{itemize}
+
+\subsection*{Abgrenzung des Leistungsumfangs}
+
+Die fachlichen Modelle werden weder vollständig neu entworfen noch unverändert übernommen.
+Übernommen werden die in der Vorarbeit \cite{BreuBA} aus den Karpaten-Daten abgeleiteten
+Verteilungen für Geschwindigkeit und Schrittlänge. Erweitert wird die
+Richtungsentscheidung: Die Richtungsträgheit wird aus Paaren aufeinanderfolgender Schritte
+der realen Trajektorien geschätzt, eine Gewichtung des Geländes kommt hinzu, und die
+Kandidatenrichtungen werden geschichtet über den Vollkreis gezogen, sodass ihre
+Gleichverteilung schon aus der Konstruktion folgt.
+
+Nicht Gegenstand dieser Arbeit sind die Bildverarbeitung und die automatische Artbestimmung
+auf Kamerafallenbildern; ob ein Bild einen Bären zeigt, wird als gegeben vorausgesetzt.
+Ebenso ist die Anwendung nicht für Echtzeitdaten ausgelegt -- eingehende Bilder werden in
+Stapeln verarbeitet. Die Simulation ist schließlich kein Vorhersagewerkzeug für ein
+einzelnes Tier: Sie erzeugt zufällige Pfade und wird deshalb nicht daran gemessen, ob ein
+einzelner Pfad passt, sondern an statistischen Verteilungsmaßen.
 
 \section{Aufbau der Arbeit}
+\label{sec:aufbau}
 
-Die vorliegende Arbeit gliedert sich wie folgt: Kapitel 2 legt die technischen und konzeptionellen Grundlagen dar, die für das Verständnis der Arbeit notwendig sind. Dazu zählen die Grundlagen der Geodatenverarbeitung und Web-Kartenvisualisierung sowie ein Vergleich gängiger Web-Kartenbibliotheken mit besonderem Fokus auf MapLibre GL JS.
+Die Arbeit ist wie folgt aufgebaut.
 
-Kapitel 3 analysiert die bestehenden Systeme, ihre Architektur, ihre Datenstrukturen sowie die Simulationsdaten, die in die neue Plattform integriert werden sollen, und leitet daraus die Anforderungen an das zu entwickelnde System ab.
+Kapitel~\ref{chap:grundlagen} legt die Grundlagen dar. Abschnitt~\ref{sec:geodaten}
+behandelt Geodaten und ihre Darstellung im Web, Abschnitt~\ref{sec:bibliotheken} die
+infrage kommenden Kartenbibliotheken und ihre Einbindung in den verwendeten
+Anwendungsrahmen. Abschnitt~\ref{sec:fachliche-grundlagen} führt die fachlichen Grundlagen
+ein, die für die Modellerweiterung und die statistische Auswertung gebraucht werden.
 
-Kapitel 4 beschreibt die eigentliche Implementierung: die Umsetzung der Kartenvisualisierung mit MapLibre GL JS, die Integration der einzelnen Teilsysteme, die Vereinheitlichung der Datenbank sowie die entwickelten Interaktions- und Visualisierungskonzepte.
+Kapitel~\ref{chap:analyse} analysiert die bestehenden Systeme, ihre Datenbestände und die
+übernommenen Modelle. Besonderes Gewicht liegt auf den festgestellten technischen
+Einschränkungen, die mehrere Entwurfsentscheidungen in
+Kapitel~\ref{chap:implementierung} begründen. Am Ende des Kapitels stehen daraus
+abgeleitete, nummerierte Anforderungen.
 
-Kapitel 5 diskutiert und bewertet das entwickelte System kritisch und ordnet dessen Grenzen ein. Kapitel 6 fasst die Ergebnisse der Arbeit zusammen und gibt einen Ausblick auf mögliche zukünftige Erweiterungen des Systems.
+Kapitel~\ref{chap:implementierung} beschreibt die Implementierung: die Kartenvisualisierung,
+die Integration der Teilsysteme, die Vereinheitlichung der Datenhaltung, die
+Bewegungsanimation, die Übertragung des Bewegungsmodells auf die japanischen Kameradaten
+sowie den statistischen Vergleich der Tagesaktivität.
 
+Kapitel~\ref{chap:diskussion} gleicht das Ergebnis gegen die Anforderungen ab, ordnet das
+erzielte $\Delta$-Ergebnis ein und benennt die Grenzen der Arbeit.
+Kapitel~\ref{chap:fazit} fasst zusammen und gibt einen Ausblick.
 
+% ====================================================================
 \chapter{Grundlagen}
+\label{chap:grundlagen}
 
+Dieses Kapitel stellt die Grundlagen bereit, auf denen die spätere Umsetzung aufbaut. Die
+Abschnitte~\ref{sec:geodaten} und~\ref{sec:bibliotheken} behandeln die technische Seite:
+wie Geodaten beschrieben werden, wie Web-Karten sie darstellen und in welchem Rahmen die
+Anwendung läuft. Abschnitt~\ref{sec:fachliche-grundlagen} behandelt die fachliche Seite:
+wie Tierbewegung modelliert wird und wie sich aus Kamerafallendaten Aussagen gewinnen
+lassen.
+
+% =====================================================================
 \section{Geodaten und Web-Kartenvisualisierung}
+\label{sec:geodaten}
 
-Geodaten sind Daten, die einen direkten Raumbezug besitzen, also einer bestimmten Position auf der Erdoberfläche zugeordnet werden können \cite{TODO:GISGrundlagen}. Man unterscheidet grundsätzlich zwischen Vektordaten und Rasterdaten. Vektordaten beschreiben geometrische Objekte in Form von Punkten, Linien und Polygonen, die jeweils durch Koordinatenlisten definiert sind — beispielsweise ein einzelner GPS-Messpunkt eines besenderten Bären (Punkt), dessen zurückgelegter Bewegungspfad (Linie) oder ein abgegrenztes Untersuchungsgebiet (Polygon). Rasterdaten hingegen bestehen aus einem regelmäßigen Gitter von Zellen mit zugeordneten Werten, wie es etwa bei Luftbildern, Höhenmodellen oder klassischen Kartenkacheln (Tiles) der Fall ist.
+\subsection{Vektor- und Rasterdaten}
 
-Um Geodaten eindeutig zu positionieren, werden Koordinatenreferenzsysteme (Coordinate Reference Systems, CRS) verwendet. Für die Web-Kartendarstellung hat sich das World Geodetic System 1984 (WGS84, EPSG:4326) als De-facto-Standard etabliert, das Positionen als geografische Breite (Latitude) und Länge (Longitude) angibt. Für die Kachelbasierte Darstellung im Web wird davon meist in die sogenannte Web-Mercator-Projektion (EPSG:3857) transformiert, welche die Kugelform der Erde auf eine ebene Fläche abbildet und dabei Winkeltreue zulasten der Flächentreue bevorzugt — ein für die Navigation und Web-Kartendienste akzeptabler Kompromiss \cite{TODO:WebMercator}.
+Geodaten sind Daten mit Raumbezug: Jeder Datensatz gehört zu einer Position auf der
+Erdoberfläche. Es gibt zwei Grundformen.
 
-Für den Datenaustausch zwischen Server und Client hat sich im Web-Kontext das Format GeoJSON durchgesetzt, eine auf JSON basierende offene Spezifikation zur Kodierung geographischer Datenstrukturen \cite{TODO:GeoJSONSpec}. Eine GeoJSON-\texttt{FeatureCollection} besteht aus einer Liste von \texttt{Feature}-Objekten, die jeweils eine Geometrie (z.\,B. \texttt{Point}, \texttt{LineString}, \texttt{Polygon}) und beliebige zusätzliche Eigenschaften (\texttt{properties}) in Form von Schlüssel-Wert-Paaren enthalten können. Dieses Format eignet sich besonders gut für die Übertragung dynamisch generierter Kartendaten aus einer Backend-Anwendung an eine im Browser laufende Kartenkomponente, da es sowohl von serverseitigen Programmiersprachen wie Python als auch nativ von JavaScript-Kartenbibliotheken verarbeitet werden kann.
+\textbf{Vektordaten} beschreiben einzelne Objekte durch Koordinaten. Für diese Arbeit
+reichen drei Typen:
 
-Web-basierte Kartenanwendungen folgen üblicherweise einer Client-Server-Architektur: Der Server hält die Rohdaten (z.\,B. in einer relationalen oder Geodatenbank) vor, bereitet sie auf Anfrage auf und liefert sie in einem für den Client verarbeitbaren Format aus; der Client — im Regelfall ein Webbrowser — übernimmt das eigentliche Rendering der Karte sowie die Interaktion mit dem Nutzer. Historisch wurden Kartenbilder häufig vollständig serverseitig gerendert und als fertige Rasterbilder (Kartenkacheln) an den Client übertragen. Mit der Verbreitung leistungsfähiger Grafik-APIs im Browser, insbesondere WebGL, hat sich der Trend zunehmend in Richtung client-seitigem Rendering von Vektordaten verschoben: Anstelle vorgerenderter Bilder werden Vektorkacheln (Vector Tiles) übertragen, deren visuelle Darstellung (Farben, Beschriftung, Symbolik) erst im Browser anhand eines deklarativen Style-Dokuments berechnet wird. Dieser Ansatz reduziert die übertragene Datenmenge, ermöglicht eine flüssige, GPU-beschleunigte Interaktion (Zoomen, Rotieren) und erlaubt es, denselben Datenbestand dynamisch unterschiedlich zu stylen, ohne serverseitig neue Bilder generieren zu müssen \cite{TODO:VectorTiles}.
+\begin{itemize}
+    \item Ein \emph{Punkt} ist eine einzelne Koordinate, zum Beispiel die GPS-Ortung eines
+    besenderten Bären oder der Standort eines Geräts.
+    \item Eine \emph{Linie} ist eine Folge von Punkten, zum Beispiel der Bewegungspfad eines
+    Bären über einen Tag.
+    \item Ein \emph{Polygon} ist eine geschlossene Fläche, zum Beispiel ein
+    Untersuchungsgebiet oder eine von Nutzenden eingezeichnete Fläche.
+\end{itemize}
 
-\section{Web-Kartenbibliotheken (insb. MapLibre GL JS)}
+\textbf{Rasterdaten} bestehen aus einem Gitter von Zellen mit je einem Wert.
+Satellitenbilder gehören dazu, ebenso Höhenmodelle und die Kartenbilder, aus denen
+Web-Karten zusammengesetzt sind.
 
-Zur Einbettung interaktiver Karten in Webanwendungen existiert eine Reihe etablierter JavaScript-Bibliotheken, die sich in ihrem Rendering-Ansatz, ihrem Funktionsumfang und ihrer Lizenzierung unterscheiden.
+Für die Darstellung ist der Unterschied wichtig. Ein Rasterbild wird gezeichnet, wie es
+ist. Vektordaten dagegen enthalten keine Angaben zum Aussehen: Farbe, Größe und Form
+werden erst beim Zeichnen festgelegt. Deshalb lassen sich dieselben Daten je nach Frage
+unterschiedlich darstellen.
 
-\textbf{Leaflet.js} ist eine seit 2011 verbreitete, leichtgewichtige Open-Source-Bibliothek, die Karten primär über gekachelte Rasterbilder darstellt und einzelne Vektorobjekte (Marker, Linien, Polygone) über SVG- bzw. Canvas-Elemente im DOM rendert \cite{TODO:LeafletDoc}. Aufgrund ihres einfachen API und der geringen Einstiegshürde wird Leaflet häufig in Kombination mit dem Python-Paket Folium eingesetzt, das eine deklarative Python-Schnittstelle zur Erzeugung von Leaflet-Karten bereitstellt und insbesondere im Data-Science- und Prototyping-Umfeld verbreitet ist. Der DOM-basierte Rendering-Ansatz stößt jedoch bei einer großen Anzahl gleichzeitig dargestellter Objekte (mehrere tausend Punkte oder komplexe Liniengeometrien) an Performancegrenzen, da jedes Objekt ein eigenes DOM- bzw. SVG-Element erzeugt, dessen Verwaltung und Neuzeichnung mit wachsender Objektzahl zunehmend rechenintensiv wird.
+\subsection{Koordinatenbezugssysteme und GeoJSON}
+\label{subsec:crs}
 
-\textbf{Mapbox GL JS} führte demgegenüber ab 2014 einen WebGL-basierten Rendering-Ansatz ein, bei dem Vektorkacheln direkt auf der Grafikkarte gerendert werden, was eine deutlich höhere Darstellungsleistung bei großen Datenmengen sowie flüssige 3D-Perspektiven und Rotationen ermöglicht \cite{TODO:MapboxGL}. Mit der Änderung der Lizenzbedingungen von Mapbox GL JS im Jahr 2020 hin zu einer proprietären Lizenz entstand als Community-Fork der letzten frei lizenzierten Version das Projekt \textbf{MapLibre GL JS}, das seither unter der offenen BSD-3-Clause-Lizenz weiterentwickelt wird \cite{TODO:MapLibreGH}. MapLibre GL JS übernimmt dabei die WebGL-basierte Rendering-Architektur sowie die deklarative Style-Spezifikation von Mapbox GL JS, bleibt jedoch vollständig quelloffen und ist nicht an einen kommerziellen Kartenanbieter gebunden.
+Eine Koordinate allein ist mehrdeutig. Erst mit dem zugehörigen Bezugssystem bezeichnet
+sie einen bestimmten Ort \cite{GISGrundlagen}. Ein solches Koordinatenreferenzsystem legt
+fest, wie die Erdfigur angenähert wird, wo der Ursprung liegt und in welcher Einheit und
+Reihenfolge die Achsen gezählt werden. Die gebräuchlichen Systeme stehen im \emph{EPSG
+Geodetic Parameter Dataset}, einem Katalog der International Association of Oil \& Gas
+Producers. Jedes System hat dort eine eindeutige Nummer \cite{EPSG}. In dieser Arbeit
+treffen zwei Systeme aufeinander.
 
-Zentrales Konzept von MapLibre GL JS ist die Trennung von Daten (Sources) und deren visueller Darstellung (Layers). Eine \texttt{Source} referenziert einen Datensatz — etwa eine GeoJSON-\texttt{FeatureCollection} oder einen Vector-Tile-Endpunkt — während ein oder mehrere \texttt{Layer} festlegen, wie die Daten dieser Quelle dargestellt werden (z.\,B. als Kreis mit bestimmter Farbe und Radius, als Linie mit bestimmter Strichstärke, oder als Flächenfüllung). Über sogenannte Paint- und Layout-Properties lassen sich diese Darstellungseigenschaften dynamisch anhand von Feature-Eigenschaften steuern, etwa um GPS-Punkte eines Simulationsmodells farblich nach ihrem Typ (realer Messpunkt vs.\ simulierte Alternative) zu unterscheiden. Die gesamte Kartenkonfiguration — Basiskarte, Datenquellen, Layer und deren Styling — wird dabei über ein deklaratives JSON-Dokument nach der Mapbox-Style-Spezifikation beschrieben, was eine hohe Flexibilität bei gleichzeitig guter Nachvollziehbarkeit der Kartendefinition ermöglicht \cite{TODO:StyleSpec}.
+Das \textbf{World Geodetic System 1984} (WGS~84, EPSG:4326) ist ein geographisches
+Koordinatenreferenzsystem. Seine Achsen sind die geodätische Breite nach Norden und die
+geodätische Länge nach Osten, beide in Grad. In diesem System arbeiten GPS-Empfänger, und
+GeoJSON schreibt es vor. Alle Daten, die die Karte erreichen, liegen darin vor.
 
-Für die vorliegende Arbeit ist MapLibre GL JS aus mehreren Gründen die geeignete Wahl: Erstens ermöglicht der WebGL-basierte Rendering-Ansatz eine performante Darstellung auch größerer Punkt- und Pfadmengen, wie sie bei der gleichzeitigen Visualisierung realer GPS-Trajektorien, simulierter Alternativpfade und Gerätestandorte anfallen. Zweitens erlaubt die freie, quelloffene Lizenzierung den uneingeschränkten Einsatz im Forschungskontext ohne Abhängigkeit von einem kommerziellen Kartenanbieter oder API-Kosten. Drittens lässt sich MapLibre GL JS, da es sich um eine reine JavaScript-Bibliothek handelt, über eine HTML/JavaScript-Einbettung unmittelbar in eine Python-basierte Webanwendung wie Streamlit integrieren, ohne auf ein spezialisiertes, aber möglicherweise weniger flexibles Python-Wrapper-Paket angewiesen zu sein.
-% Claude Ende
+Die Rohdaten der Karpaten-Studie liegen dagegen in \textbf{EPSG:3844} vor, amtlich
+\enquote{Pulkovo 1942(58) / Stereo70}. Das ist die rumänische Landesprojektion. Sie bildet
+die Erdoberfläche über eine schiefachsige stereographische Projektion auf eine Ebene ab,
+mit Ursprungsbreite 46° und Mittelmeridian 25°, und gibt Positionen in Metern an.
 
-% ==================== KAPITEL 3 ====================
-% claude begin kapitel 3
-\chapter{Analyse der bestehenden Systeme}
+Der Unterschied ist grundsätzlich: WGS~84 beschreibt Positionen auf einer gekrümmten
+Fläche in Winkeln, EPSG:3844 bildet sie auf eine Ebene ab. Jede solche Abbildung verzerrt.
+Eine Projektion kann nur eine Eigenschaft erhalten -- Winkel, Flächen oder Entfernungen --
+aber nie alle zugleich. Die stereographische Projektion ist winkeltreu und eignet sich
+deshalb für Gebiete, die in alle Richtungen etwa gleich weit reichen \cite{Snyder1987}.
 
-\section{Systemübersicht und Komponenten}
+Daraus folgt, warum umgerechnet werden muss. Eine Landesprojektion ist auf ein Gebiet
+zugeschnitten: Innerhalb Rumäniens sind die Verzerrungen gering und Entfernungen direkt in
+Metern ablesbar. Außerhalb wachsen sie schnell an, und für eine Weltkarte ist das System
+unbrauchbar.
 
-Das im Rahmen dieser Arbeit weiterentwickelte Gesamtsystem setzt sich aus vier fachlich unterschiedlichen, historisch getrennt entwickelten Komponenten zusammen, die im Folgenden kurz charakterisiert werden. Tabelle~\ref{tab:subsysteme} gibt einen Überblick.
+Die Umrechnung erfolgt deshalb schon beim Lesen aus der
+Datenbank.\footnote{\texttt{wildlife\_db\_mariadb.py}: Anlage der Transformation im
+Konstruktor, Anwendung je Koordinate in \texttt{\_transform\_coordinates()}.} Die
+Datenzugriffsschicht legt die Transformation einmal an und wendet sie auf jede gelesene
+Koordinate an.
 
-\begin{table}[h!]
-\centering
-\caption{Übersicht der in die Plattform integrierten Teilsysteme}
-\label{tab:subsysteme}
-\begin{tabular}{p{3.2cm}p{3.2cm}p{4cm}p{3.5cm}}
-\toprule
-\textbf{Teilsystem} & \textbf{Ursprung} & \textbf{Datenquelle} & \textbf{Zweck} \\
-\midrule
-Bärenabschreckung Japan & Vorarbeit \cite{TODO:LorenzBA} & Geräte-Standorte, Kamerabilder, Freihand-Polygone (DB) & Kartierung und Verwaltung von Abschreckungsmaßnahmen \\
-Bärenbewegungssimulation & Vorarbeit \cite{TODO:BreuBA} & GPS-Trajektorien Karpaten (SQLite), Geschwindigkeitsstatistiken & Modellbasierte Generierung alternativer Bewegungsschritte \\
-Bildextraktion aus E-Mails & Vorarbeit \cite{TODO:LelchatBA} & Postfach via Microsoft Graph API & Automatisierte Erfassung neuer Kamerabilder \\
-Carpathian-Bären-Tracking & Bestandteil dieser Arbeit erweitert & GPS-Tracking-Daten (MariaDB, CSV-Fallback) & Darstellung realer Bewegungspfade rumänischer Braunbären \\
-\bottomrule
-\end{tabular}
-\end{table}
+Dabei ist ein Detail zu beachten. Das EPSG-Register führt die Achsen von EPSG:4326 in der
+Reihenfolge Breite, dann Länge. GeoJSON schreibt die umgekehrte Reihenfolge vor, wie der
+folgende Abschnitt zeigt. Die Transformation wird deshalb mit dem Parameter
+\texttt{always\_xy} angelegt. Er erzwingt die von GeoJSON verlangte Reihenfolge Länge vor
+Breite.
 
-Alle vier Komponenten wurden vor Beginn dieser Arbeit unabhängig voneinander implementiert und verfügten jeweils über eigene, isolierte Datenhaltung sowie eigene Kartenansichten auf Basis von Folium/Leaflet. Eine gemeinsame Nutzung war allenfalls durch manuelles Wechseln zwischen mehreren Anwendungen möglich. Als gemeinsamer Nenner dient in der bestehenden Architektur die Klasse \texttt{WildlifeDatabase} (Datei \texttt{wildlife\_db\_mariadb.py}), welche die Verbindung zu einer zentralen MariaDB-Instanz (Datenbank \texttt{ursus}) kapselt und generische Methoden zur Ausführung parametrisierter SQL-Abfragen (\texttt{execute\_query}, \texttt{execute\_update}) bereitstellt. Diese Datenzugriffsschicht wird von mehreren Teilsystemen wiederverwendet, war zu Beginn dieser Arbeit jedoch inkonsistent eingebunden: Während die Bildextraktion und die Japan-Komponente bereits vollständig auf MariaDB umgestellt waren, griff die Carpathian-Komponente wahlweise auf die zentrale Datenbank oder, als Fallback bei fehlenden Daten, auf lokale CSV-Dateien zurück, und die Bewegungssimulation nutzte weiterhin eine separate, lokal abgelegte SQLite-Datenbank.
+Dieser Konflikt ist nicht nur theoretisch. Bei einer externen Datenquelle trat er
+tatsächlich auf: Die gelieferten Flächen lagen auf der Karte in einem völlig anderen
+Erdteil. Abschnitt~\ref{sec:externe-quellen} beschreibt den Fall und seine Behebung.
 
-Abbildung~\ref{fig:architektur} skizziert die Zielarchitektur, wie sie im Rahmen dieser Arbeit umgesetzt wurde: Eine einzelne Streamlit-Anwendung (\texttt{map.py}) fungiert als zentraler Einstiegspunkt, lädt die Daten der einzelnen Teilsysteme parallel in der Seitenleiste konfigurierbar vor und übergibt sie an eine gemeinsame Kartenkomponente (\texttt{maplibre\_component.py}), die alle Layer in einer einzigen MapLibre-GL-Instanz zusammenführt.
+Dass die Umrechnung zentral in der Datenzugriffsschicht stattfindet, hat eine praktische
+Folge: Alle nachgelagerten Komponenten -- Karte, Simulation, Statistik -- arbeiten nur mit
+WGS~84 und müssen die Projektion nicht kennen.
 
-\begin{figure}[h!]
-\centering
-% TODO: Architekturdiagramm einfuegen, z.B. mit draw.io/Excalidraw erstellt
-% \includegraphics[width=0.9\textwidth]{bilder/architektur_uebersicht.png}
-\fbox{\parbox{0.9\textwidth}{\centering\vspace{3cm}Platzhalter: Architekturdiagramm\\(Streamlit-App $\rightarrow$ Teilsystem-Module $\rightarrow$ WildlifeDatabase $\rightarrow$ MariaDB;\\ separat: Email-Extractor-Dienst $\rightarrow$ MariaDB)\vspace{3cm}}}
-\caption{Zielarchitektur: gemeinsame Datenzugriffsschicht und gemeinsame Kartenkomponente}
-\label{fig:architektur}
-\end{figure}
+\paragraph{GeoJSON als Austauschformat.}
+\label{subsec:geojson}
 
-\section{Simulationsdaten}
+Für den Austausch von Vektordaten zwischen Server und Browser wird in dieser Arbeit
+durchgängig GeoJSON verwendet. Die Internet Engineering Task Force (IETF) hat es als
+RFC~7946 standardisiert \cite{RFC7946}. Es baut auf JSON (JavaScript Object Notation) auf,
+einem textbasierten Format aus verschachtelten Schlüssel-Wert-Paaren.
 
-\subsection{Aufbau des Systems}
+Der Aufbau ist einfach. Ein \texttt{Feature} besteht aus einer Geometrie und einem
+Eigenschaftsobjekt (\texttt{properties}) mit beliebigen Schlüssel-Wert-Paaren. Mehrere
+Features bilden zusammen eine \texttt{Feature\-Collection}.
+Listing~\ref{lst:geojson-grundlagen} zeigt ein Punkt-Feature.
 
-Die Bewegungssimulation basiert auf einem sogenannten Step-Selection-Function-Modell (SSF), einem in der Bewegungsökologie etablierten statistischen Verfahren zur Analyse und Vorhersage von Tierbewegungen \cite{TODO:SSFLiteratur}. Grundidee eines SSF-Modells ist es, für jeden real beobachteten Bewegungsschritt eines Tieres eine Menge plausibler, aber nicht tatsächlich eingeschlagener Alternativschritte zu generieren. Durch den statistischen Vergleich der Eigenschaften (z.\,B. Landbedeckung, Entfernung zu Straßen) des realen Schritts gegenüber denen der Alternativschritte lässt sich modellieren, welche Umgebungsfaktoren die Bewegungsentscheidung eines Tieres beeinflussen.
-
-Im bestehenden System ist dieses Modell in der Klasse \texttt{StepSelectionModel} implementiert, die auf einer Reihe von Hilfsklassen aufbaut (u.\,a. \texttt{StepTrajectorySet}, \texttt{TrajectorySegment}, \texttt{TrajectoryPoint}, \texttt{SeasonalTrajectoryProcessor}). Die realen GPS-Trajektorien rumänischer Braunbären werden dabei in saisonale Segmente unterteilt (Frühling, Sommer, Herbst, Winter), da sich das Bewegungsverhalten von Bären je nach Jahreszeit deutlich unterscheidet, u.\,a. bedingt durch die herbstliche Hyperphagie-Phase oder die winterliche Ruhephase. Für jedes so entstandene Segment wird zusätzlich auf eine Tabelle geschwindigkeitsbezogener Referenzwerte (\texttt{bear\_speeds}) zugegriffen, die nach Geschlecht, Altersklasse, Saison, Tageszeit und Datenquelle differenziert vorliegt und zur Modellierung realistischer Schrittlängen herangezogen wird.
-
-Im Rahmen dieser Arbeit wurde das Simulationsmodell, das ursprünglich als eigenständiges, lokal ausgeführtes Skript konzipiert war, in eine wiederverwendbare Integrationsschicht (\texttt{bear\_simulation/\_\_init\_\_.py}) überführt. Diese Schicht lädt das Modell beim ersten Zugriff einmalig und hält es über die gesamte Nutzersitzung im Arbeitsspeicher (\texttt{st.cache\_resource}), anstatt es bei jeder Interaktion neu zu initialisieren. Dabei wurde zusätzlich ein Kompatibilitätsproblem gelöst: Die ursprüngliche Implementierung griff bei Bedarf direkt auf eine SQLite-Verbindung zu, um Geschwindigkeitswerte nachzuschlagen. Da Streamlit eingehende Anfragen jedoch nicht zwingend im selben Thread bearbeitet, in dem die Datenbankverbindung ursprünglich geöffnet wurde, SQLite-Verbindungsobjekte in Python jedoch nicht threadübergreifend verwendet werden dürfen, wurden die relevanten Geschwindigkeitswerte beim einmaligen Laden vollständig in ein In-Memory-Dictionary überführt; alle nachfolgenden Zugriffe erfolgen ausschließlich über dieses Dictionary.
-
-\subsection{Datenstruktur und Ausgabeformat}
-
-Für die Einbindung in die gemeinsame Kartenkomponente wurde eine Konvertierungsfunktion \texttt{get\_simulation\_geojson(bear\_id, season, num\_alternatives)} implementiert, die das Ausgabeformat des Simulationsmodells in eine für MapLibre GL JS konsumierbare GeoJSON-Struktur überführt. Das Ergebnis besteht aus zwei \texttt{FeatureCollections}: \texttt{points} enthält sowohl die realen GPS-Messpunkte als auch die dazugehörigen, modellgenerierten Alternativpunkte je Schritt; \texttt{paths} enthält den aus den realen Punkten gebildeten Bewegungspfad als \texttt{LineString}. Tabelle~\ref{tab:geojson-schema} listet die wichtigsten Eigenschaften eines Punkt-Features auf.
-
-\begin{table}[h!]
-\centering
-\caption{Feature-Eigenschaften der Simulations-GeoJSON (Ausschnitt)}
-\label{tab:geojson-schema}
-\begin{tabular}{p{3cm}p{3.5cm}p{7cm}}
-\toprule
-\textbf{Property} & \textbf{Typ} & \textbf{Bedeutung} \\
-\midrule
-\texttt{bear\_id} & String & ID des Bären, dem der Schritt zugeordnet ist \\
-\texttt{type} & String & \texttt{"real"} für gemessene Schritte, \texttt{"alternative"} für simulierte Schritte \\
-\texttt{step\_idx} & Integer & Laufender Index des Schritts innerhalb des Segments \\
-\texttt{angle} & Float & Richtungswinkel des Schritts (Grad) \\
-\texttt{length\_m} & Float & Schrittlänge in Metern \\
-\texttt{color} & String & Für das Rendering vorbestimmter Farbwert (blau = real, orange = alternativ) \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Listing~\ref{lst:geojson} zeigt beispielhaft die Struktur eines vereinfachten Ausschnitts der resultierenden GeoJSON-Ausgabe.
-
-\begin{lstlisting}[language=Python, caption={Vereinfachtes Beispiel eines Punkt-Features der Simulations-GeoJSON}, label={lst:geojson}]
+\begin{lstlisting}[caption={Aufbau eines GeoJSON-Punkt-Features},
+                   label={lst:geojson-grundlagen}]
 {
   "type": "Feature",
-  "properties": {
-    "bear_id": "10",
-    "type": "alternative",
-    "step_idx": 4,
-    "angle": 132.6,
-    "length_m": 812.3,
-    "color": "#ff9800"
-  },
-  "geometry": {
-    "type": "Point",
-    "coordinates": [25.041, 45.663]
-  }
+  "properties": { "bear_id": "10", "timestamp": "2013-06-14T08:00:00" },
+  "geometry": { "type": "Point", "coordinates": [25.041, 45.663] }
 }
 \end{lstlisting}
 
-Die Anzahl der pro realem Schritt generierten Alternativschritte ist über den Parameter \texttt{num\_alternatives} konfigurierbar und wird über die Nutzeroberfläche im Bereich 3 bis 20 einstellbar gemacht (siehe Abschnitt~\ref{sec:interaktion}). Bei $n$ realen Schritten und $k$ Alternativen je Schritt ergibt sich die Gesamtzahl der dargestellten Simulationspunkte zu
+Das Format passt aus zwei Gründen zu dieser Arbeit. Erstens können beide Seiten es direkt
+verarbeiten: Python erzeugt es als verschachteltes Dictionary, JavaScript liest es ohne
+Umwandlung. Zweitens nimmt das freie \texttt{properties}-Objekt fachliche Angaben direkt am
+Objekt auf, etwa die Bären-Kennung oder den Zeitstempel. Die Kartenbibliothek kann die
+Darstellung später von diesen Angaben abhängig machen.
 
-\begin{equation}
-N_{\text{Punkte}} = n \cdot (k + 1),
-\label{eq:punktanzahl}
-\end{equation}
+Zwei Festlegungen des Standards sind praktisch wichtig. Erstens schreibt RFC~7946 WGS~84
+als Bezugssystem vor. Zweitens legt er die Reihenfolge der Koordinaten fest: Die ersten
+beiden Elemente sind \enquote{longitude and latitude [\ldots] precisely in that order}
+\cite{RFC7946}, also Länge vor Breite.
 
-da neben den $k$ Alternativen je Schritt stets auch der reale Messpunkt selbst mit dargestellt wird. Diese Beziehung ist insbesondere für die Einschätzung der Rendering-Last relevant, da bereits bei moderater Schrittzahl und einer für aussagekräftige Modellvergleiche sinnvollen Alternativenzahl schnell mehrere tausend Punkte gleichzeitig dargestellt werden müssen — ein Szenario, das die in Abschnitt~\ref{sec:leaflet-limits} beschriebenen Grenzen des DOM-basierten Renderings deutlich überschreitet und den in dieser Arbeit vorgenommenen Wechsel zu MapLibre GL JS zusätzlich motiviert.
-% Claude Ende Kapitel 3
+Das ist umgekehrt zu der Reihenfolge, in der man Koordinaten gewöhnlich nennt, und
+widerspricht außerdem dem EPSG-Register. Dienste, die sich an das Register halten, liefern
+GeoJSON, dessen Geometrien an einer völlig falschen Stelle der Erde liegen. Der Fehler
+fällt nicht an den Daten selbst auf, sondern nur daran, dass nichts an der erwarteten
+Stelle erscheint.
 
-% ==================== KAPITEL 4 ====================
-% claude begin kapitel 4
-\chapter{Implementierung}
+\subsection{Kacheln und Höhenmodelle}
+\label{subsec:kacheln}
 
-\section{Umsetzung der Kartenvisualisierung mit MapLibre GL JS}
+Eine Web-Karte lädt ihren Hintergrund nicht als ein großes Bild, sondern in quadratischen
+Ausschnitten, den \emph{Kacheln}. Alle Anbieter verwenden dafür dasselbe Schema.
 
-Die gemeinsame Kartenkomponente ist in der Datei \texttt{maplibre\_component.py} implementiert und folgt dem Prinzip, eine vollständige, in sich geschlossene HTML/JavaScript-Seite zu erzeugen, die über die Streamlit-Funktion \texttt{components.html()} als eingebettetes \texttt{iframe} in die Anwendung eingebunden wird. Diese Vorgehensweise wurde gewählt, da MapLibre GL JS als reine JavaScript-Bibliothek ausgeliefert wird und Streamlit selbst über kein natives Kartenwidget mit vergleichbarem Funktionsumfang verfügt.
+Auf Zoomstufe~0 zeigt eine einzige Kachel die ganze Welt. Mit jeder weiteren Zoomstufe
+wird jede Kachel in vier Teile geteilt, auf Stufe~$z$ gibt es also $4^{z}$ Kacheln. Jede
+Kachel hat die Adresse $(z, x, y)$, die direkt in eine URL eingesetzt wird. Der Browser
+lädt nur die Kacheln, die gerade sichtbar sind, und holt beim Verschieben die neuen nach.
 
-Die zentrale Funktion \texttt{render\_maplibre()} nimmt die aus den Teilsystemen aufbereiteten GeoJSON-Daten entgegen, serialisiert sie als JSON in den generierten HTML-Quelltext und initialisiert innerhalb des eingebetteten JavaScript-Codes eine einzelne \texttt{maplibregl.Map}-Instanz. Für jede Datenquelle wird beim Laden der Karte eine \texttt{Source} sowie ein oder mehrere zugehörige \texttt{Layer} hinzugefügt (Funktion \texttt{addSourcesAndLayers}); die Hilfsfunktion \texttt{addLayerSafe} stellt dabei sicher, dass Layer idempotent, also nicht mehrfach, hinzugefügt werden. Damit die von der Basiskarte gerenderten Beschriftungen (z.\,B. Städte- und Ländernamen) weiterhin über den eigenen Datenlayern sichtbar bleiben, wird jeder neue Layer gezielt vor dem ersten in der Basiskarte vorkommenden Symbol-Layer eingefügt (Funktion \texttt{firstSymbolLayerId}).
+Das Raster braucht eine Projektion, die sich gleichmäßig in Quadrate teilen lässt. Üblich
+ist die Web-Mercator-Projektion (EPSG:3857). Die Anwendung selbst rechnet nicht in diesem
+System; die Kartenbibliothek erledigt das intern.
 
-Ein zentrales Gestaltungsmerkmal der Implementierung ist die strikte Trennung zwischen serverseitig (Streamlit/Python) und clientseitig (JavaScript im Browser) ausgelösten Interaktionen. Das Ein- und Ausblenden einzelner Layer über die auf der Karte platzierten Checkboxen (siehe Tabelle~\ref{tab:layer}) wird ausschließlich clientseitig über \texttt{map.setLayoutProperty(layer, "visibility", ...)} realisiert und löst keinen erneuten Rundlauf zum Streamlit-Server aus. Dies ist eine bewusste Entwurfsentscheidung: Ein erneuter Server-Roundtrip würde einen vollständigen Neuaufbau der Streamlit-Seite und damit ein erneutes Rendering der gesamten \texttt{iframe}-Karte samt Neuanfrage der Kartenkacheln erzwingen, was sich in der Praxis als spürbare Verzögerung bemerkbar macht.
+Daraus folgt eine Einschränkung, die leicht übersehen wird: Jeder Dienst hält Kacheln nur
+bis zu einer bestimmten Zoomstufe vor. Zoomt man weiter hinein, muss der Browser die
+vorhandenen Kacheln vergrößern. Kennt er diese Obergrenze nicht, fordert er Kacheln an, die
+es nicht gibt. Kapitel~\ref{chap:implementierung} zeigt einen solchen Fall.
 
-\begin{table}[h!]
+\textbf{Rasterkacheln} sind fertige Bilder, meist PNG oder JPEG. Der Server legt das
+Aussehen fest, der Browser zeichnet das Bild nur noch. Satellitenbilder gibt es nur in
+dieser Form, weil sie Fotografien sind.
+
+\textbf{Vektorkacheln} enthalten statt eines Bildes die Geometrien selbst, in einem binären
+Format nach der Mapbox Vector Tile Specification \cite{MVTSpec}. Hier bestimmt erst der
+Browser das Aussehen. Farben, Linienstärken und Beschriftungen lassen sich deshalb ändern,
+ohne neue Daten zu laden -- dieselben Kacheln ergeben eine helle und eine dunkle Karte.
+
+\paragraph{Höhenmodelle.}
+\label{subsec:hoehenmodelle}
+
+Für die dreidimensionale Darstellung des Geländes braucht die Karte ein digitales
+Höhenmodell (Digital Elevation Model, DEM). Es kommt ebenfalls als Rasterkachel, kodiert
+aber keine Farbe, sondern eine Höhe: Die drei Farbkanäle eines Bildpunktes werden gemeinsam
+als eine Zahl gelesen, die die Geländehöhe in Metern angibt.
+
+Daraus baut der Browser ein Höhengitter und hebt die Kartengeometrie entsprechend an. Aus
+denselben Daten lässt sich eine Schummerung berechnen, die das Relief durch simulierten
+Lichteinfall auch in der Draufsicht sichtbar macht. Beide Darstellungsformen dieser Arbeit
+beruhen damit auf derselben Datengrundlage.
+
+% =====================================================================
+\section{Web-Kartenbibliotheken und ihre Einbindung}
+\label{sec:bibliotheken}
+
+Die eigentliche Darstellung der Karte im Browser übernimmt eine JavaScript-Bibliothek.
+Dieser Abschnitt stellt die beiden Bibliotheken gegenüber, die für diese Arbeit relevant
+sind: Leaflet, auf dem das Ausgangssystem beruhte, und MapLibre GL JS, auf das es
+umgestellt wurde. Anschließend wird der Anwendungsrahmen behandelt, in den beide
+eingebettet werden.
+
+\subsection{Leaflet und Folium}
+\label{subsec:leaflet}
+
+Leaflet ist eine verbreitete, quelloffene JavaScript-Bibliothek für interaktive Karten. Sie
+verwaltet die Kacheln des Kartenhintergrunds, reagiert auf Zoomen und Verschieben und
+stellt Vektorobjekte wie Marker, Linien und Flächen bereit.
+
+Für das Zeichnen dieser Vektorobjekte verwendet Leaflet standardmäßig einen SVG-Renderer;
+über die Option \texttt{preferCanvas} lässt sich alternativ ein Canvas-Renderer wählen
+\cite{LeafletDocs}. Im SVG-Fall erhält jedes Objekt ein eigenes Element im Document Object
+Model des Browsers. Der Browser muss diese Elemente verwalten und bei jeder Kartenbewegung
+neu positionieren; der Aufwand wächst somit mit der Zahl der Objekte. Der Canvas-Renderer
+vermeidet die Einzelelemente, zeichnet aber ebenfalls auf der CPU.
+
+Leaflet ist eine reine JavaScript-Bibliothek. Damit sie aus einer Python-Anwendung heraus
+nutzbar wird, existiert der Wrapper Folium: Er nimmt Python-Objekte entgegen und erzeugt
+daraus eine vollständige HTML-Seite mit eingebettetem Leaflet-Code.
+
+Die Einbindung dieser Seite in eine Streamlit-Anwendung erfolgt über das Paket
+\texttt{streamlit-folium}. Es bietet zwei Funktionen an, deren Unterschied für das
+Verständnis des Ausgangssystems wesentlich ist \cite{StreamlitFolium}:
+
+\begin{itemize}
+    \item \texttt{st\_folium()} wird als \enquote{bi-directional Component} beschrieben.
+    Die Funktion liefert ein Dictionary zurück, über das Benutzerinteraktionen - etwa
+    gezeichnete Objekte oder angeklickte Elemente - an Python zurückgemeldet werden.
+    \item \texttt{folium\_static()} stellt die Karte über deren HTML-Repräsentation dar und
+    ist laut Dokumentation eine echte Teilmenge der Funktionalität von
+    \texttt{st\_folium()}. Es gibt keinen Rückgabewert; Benutzereingaben erreichen die
+    Anwendung nicht.
+\end{itemize}
+
+Eine mit \texttt{folium\_static()} eingebundene Karte kann folglich nichts entgegennehmen,
+was der Nutzer auf ihr tut. Dieser Unterschied erklärt die in
+Kapitel~\ref{chap:einleitung} beschriebene Ungleichheit der beiden Ausgangskarten und wird
+in Kapitel~\ref{chap:analyse} anhand des Quellcodes belegt.
+
+\subsection{MapLibre GL JS und Begründung der Technologiewahl}
+\label{subsec:maplibre}
+
+Mapbox GL JS geht einen anderen Weg. Die Bibliothek verwaltet Vektorobjekte nicht als
+Elemente im Dokumentbaum, sondern übergibt sie als Geometriedaten an die Grafikkarte und
+lässt sie dort über die Browser-Schnittstelle WebGL zeichnen. Damit wurden Vektorkacheln
+im Browser praktisch nutzbar.
+
+Im Dezember 2020 stellte Mapbox die Bibliothek auf eine nicht quelloffene Lizenz um. Aus
+dem letzten frei lizenzierten Stand entstand MapLibre GL JS als quelloffener Fork, zunächst
+als direkter Ersatz gedacht. MapLibre GL JS steht unter der 3-Clause-BSD-Lizenz
+\cite{MapLibreRepo}. Die eigene Dokumentation beschreibt es als \enquote{a TypeScript
+library that uses WebGL to render interactive maps from vector tiles in a browser}
+\cite{MapLibreDocs}.
+
+Die Lizenzfrage ist für diese Arbeit wichtig. Eine quelloffene Bibliothek ohne Bindung an
+einen kommerziellen Anbieter braucht keinen Zugangsschlüssel, verursacht keine laufenden
+Kosten und hängt nicht von fremden Geschäftsbedingungen ab. Für ein Forschungsprojekt mit
+ungewisser Laufzeit ist das eine Voraussetzung.
+
+\paragraph{Datenquellen und Ebenen.}
+
+MapLibre GL JS trennt Daten und Darstellung. Das ist sein zentrales Gestaltungsprinzip.
+
+Eine \emph{Datenquelle} (\texttt{source}) verweist auf einen Datenbestand, etwa eine
+GeoJSON-FeatureCollection oder einen Vektorkachel-Dienst. Sie legt fest, \emph{was}
+dargestellt wird, nicht wie es aussieht.
+
+Eine \emph{Ebene} (\texttt{layer}) greift auf eine Datenquelle zu und legt fest, \emph{wie}
+deren Inhalt gezeichnet wird: als Kreis, als Linie oder als gefüllte Fläche, jeweils mit
+Farbe und Größe. Mehrere Ebenen können dieselbe Datenquelle unterschiedlich darstellen.
+
+Wichtig ist, dass das Aussehen von den Eigenschaften der Daten abhängen darf. Eine Ebene
+kann die Farbe eines Punktes aus dessen \texttt{properties} ableiten, statt sie fest
+vorzugeben. Eine Unterscheidung wie die zwischen gemessenen und simulierten Punkten wird so
+einmal in den Daten hinterlegt und von der Karte automatisch umgesetzt.
+
+Die gesamte Kartenkonfiguration steht in einem Stildokument, dessen Aufbau die MapLibre
+Style Spec festlegt \cite{MapLibreStyleSpec}. Eine Änderung daran wirkt sofort, ohne dass
+Daten neu geladen werden.
+
+MapLibre GL JS unterstützt außerdem Höhenmodelle als Datenquelle und eine neigbare Kamera.
+Damit ist die dreidimensionale Darstellung des Geländes möglich \cite{MapLibreDocs}.
+
+\paragraph{Gegenüberstellung der Bibliotheken.}
+\label{subsec:vergleich}
+
+Tabelle~\ref{tab:bibliotheken} stellt die wichtigsten Unterschiede gegenüber. Verglichen
+werden Funktionsweise und vorhandene Funktionen; wie sich die Darstellung in der Praxis
+schlägt, bewertet Kapitel~\ref{chap:diskussion}.
+
+\begin{table}[htbp]
 \centering
-\caption{Auf der Karte verfügbare Basiskartenstile}
-\label{tab:layer}
-\begin{tabular}{ll}
+\caption{Gegenüberstellung der betrachteten Kartenbibliotheken}
+\label{tab:bibliotheken}
+\small
+\begin{tabular}{p{3.8cm} p{4.6cm} p{4.6cm}}
 \toprule
-\textbf{Stilname} & \textbf{Typ} \\
+\textbf{Kriterium} & \textbf{Leaflet (über Folium)} & \textbf{MapLibre GL JS} \\
 \midrule
-Liberty & Vektorkachel (OpenFreeMap) \\
-Bright & Vektorkachel (OpenFreeMap) \\
-Positron & Vektorkachel (CARTO) \\
-Dark & Vektorkachel (CARTO) \\
-OSM Raster & Rasterkachel (OpenStreetMap) \\
-Esri Satellite & Rasterkachel (Esri World Imagery) \\
+Zeichnen von Vektorobjekten
+  & SVG (Standard) oder Canvas, jeweils auf der CPU
+  & WebGL, auf der Grafikkarte \\
+\addlinespace
+Verwaltung einzelner Objekte
+  & Bei SVG ein Element je Objekt im Dokumentbaum
+  & Keine Einzelelemente im Dokumentbaum \\
+\addlinespace
+Kachelarten
+  & Rasterkacheln
+  & Raster- und Vektorkacheln \\
+\addlinespace
+Änderung des Aussehens zur Laufzeit
+  & Neuaufbau der betroffenen Objekte
+  & Eigenschaft im Stildokument ändern \\
+\addlinespace
+Dreidimensionale Geländedarstellung
+  & Nicht vorgesehen
+  & Über Höhenmodell als Datenquelle \\
+\addlinespace
+Einbindung in Python
+  & Folium als ausgereifter Wrapper
+  & Kein vergleichbarer Wrapper \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Beim Wechsel des Basiskartenstils wird die gesamte Stildefinition über \texttt{map.setStyle()} ausgetauscht. Da dieser Vorgang sämtliche zuvor hinzugefügten Quellen und Layer entfernt, werden diese nach Abschluss des Stilwechsels über den Event-Listener \texttt{map.once('style.load', ...)} automatisch wiederhergestellt; die Option \texttt{diff:false} erzwingt dabei einen vollständigen Stil-Reset, um inkonsistente Zwischenzustände zu vermeiden.
+Die Wahl fiel aus drei Gründen auf MapLibre GL JS. Erstens entfallen die Einzelelemente im
+Dokumentbaum, deren Verwaltung mit der Objektzahl aufwendiger wird -- genau das wird zum
+Problem, wenn alle Datenbestände auf einer Karte liegen. Zweitens lassen sich dieselben
+Daten dank der Trennung von Datenquelle und Ebene ohne Neuladen unterschiedlich darstellen
+und einzelne Ebenen ein- und ausblenden. Drittens gibt es Satellitengrundkarten und
+dreidimensionale Geländedarstellung, die Leaflet nicht bietet.
 
-\section{Integration der Teilsysteme}
+Dem steht der Nachteil aus der letzten Tabellenzeile gegenüber: Für MapLibre GL JS gibt es
+keinen Python-Wrapper wie Folium. Die Einbindung in die Streamlit-Anwendung muss deshalb
+selbst entwickelt werden. Welche Möglichkeiten es dafür gibt, zeigt der folgende Abschnitt;
+welche gewählt wurde und warum, steht in Kapitel~\ref{chap:implementierung}.
 
-\subsection{Integration Bildextraktionssystem (Anthony Lelchat)}
+\subsection{Streamlit als Anwendungsrahmen}
+\label{subsec:streamlit}
 
-Das Bildextraktionssystem läuft als eigenständiger, von der Streamlit-Anwendung unabhängiger Prozess (\texttt{email\_extractor}), der über die Microsoft Graph API periodisch ein E-Mail-Postfach nach neu eingegangenen Wildtierbildern durchsucht (Klasse \texttt{MicrosoftGraphApi}), diese extrahiert (Klasse \texttt{WildlifePictureExtractor}) und über eine eigene Datenzugriffsschicht (\texttt{DBManager}) in die zentrale MariaDB-Datenbank schreibt. Die Kopplung an die Kartenanwendung erfolgt lose über die gemeinsam genutzte Datenbank: Die Streamlit-Anwendung liest die vom Extraktionsprozess eingetragenen Bilddaten, ohne direkt mit diesem zu kommunizieren.
+Die Anwendung dieser Arbeit ist in Python geschrieben und nutzt Streamlit als Rahmen für
+die Benutzeroberfläche. Streamlit erzeugt aus einem gewöhnlichen Python-Skript eine
+Webanwendung: Aufrufe wie \texttt{st.selectbox()} oder \texttt{st.button()} erzeugen
+Bedienelemente, deren Werte das Skript unmittelbar weiterverarbeiten kann.
 
-Um Nutzenden dennoch sichtbar zu machen, wenn neue Bilder eingetroffen sind, wurde im Rahmen dieser Arbeit ein Status-Widget (\texttt{status\_widget.py} in Verbindung mit \texttt{new\_images\_checker.py}) ergänzt, das beim Laden der Anwendung den Zeitpunkt der letzten Prüfung persistent in der Datenbank hinterlegt und alle seit diesem Zeitpunkt neu hinzugekommenen Bilder abfragt und in der Seitenleiste anzeigt.
+Drei Eigenschaften dieses Rahmens bestimmen den Aufbau der späteren Implementierung und
+werden deshalb hier eingeführt.
 
-\subsection{Integration Bewegungssimulation (Fabian Breu)}
+\paragraph{Das Ausführungsmodell.}
 
-Wie in Abschnitt~3.2 dargestellt, wurde die Bewegungssimulation über die neu geschaffene Integrationsschicht \texttt{bear\_simulation/\_\_init\_\_.py} an die gemeinsame Kartenanwendung angebunden. Die Funktionen \texttt{get\_simulation\_options()} und \texttt{get\_simulation\_geojson()} bilden dabei die öffentliche Schnittstelle, über die \texttt{map.py} sämtliche für die Filterung und Darstellung benötigten Informationen bezieht, ohne Kenntnis über die interne Funktionsweise des Simulationsmodells haben zu müssen.
+Streamlit kennt keine Ereignisbehandlung im klassischen Sinn. Stattdessen gilt:
+\enquote{Streamlit runs your script from top to bottom at every user interaction or code
+change} \cite{StreamlitCaching}.
 
-Im Verlauf der Implementierung zeigte sich, dass die Neuberechnung der Alternativschritte (\texttt{generate\_alternative\_steps}) bei jedem erneuten Durchlauf des Streamlit-Skripts ausgeführt wurde — also auch dann, wenn ein Nutzer lediglich einen fachlich nicht verwandten Filter (z.\,B. der Carpathian-Komponente) änderte. Da Streamlit bei jeder Nutzerinteraktion das gesamte Anwendungsskript von oben nach unten neu ausführt, führte dies zu spürbaren Wartezeiten. Als Lösung wurde die Funktion \texttt{get\_simulation\_geojson} mit dem Streamlit-Dekorator \texttt{@st.cache\_data} versehen, der das Ergebnis für eine gegebene Kombination aus Bären-ID, Saison und Alternativenzahl zwischenspeichert und bei unveränderten Parametern ohne erneute Modellberechnung zurückgibt. Dieselbe Optimierung wurde für die GeoJSON-Erzeugung der Carpathian-Komponente (\texttt{get\_carpathian\_geojson}) vorgenommen, die zuvor bei jedem Skriptdurchlauf erneut eine Datenbankabfrage sowie eine Neuberechnung des Downsamplings auslöste.
+Jede Interaktion - ein Klick, die Auswahl in einer Liste, das Verschieben eines Reglers --
+führt also dazu, dass das gesamte Skript erneut von der ersten bis zur letzten Zeile
+abläuft. Die Bedienelemente geben dabei ihre aktuellen Werte zurück, und die Oberfläche
+wird aus dem Ergebnis neu aufgebaut.
 
-\subsection{Datenbankvereinheitlichung}
+Dieses Modell macht den Programmablauf einfach nachvollziehbar, hat aber eine unmittelbare
+Folge: Jede aufwendige Berechnung im Skript wird bei jeder Interaktion wiederholt - auch
+dann, wenn sie mit der ausgelösten Änderung nichts zu tun hat. Eine Datenbankabfrage für
+die eine Datenebene läuft also auch dann erneut, wenn der Nutzer einen Filter einer ganz
+anderen Datenebene verstellt.
 
-Zu Beginn dieser Arbeit lag der Bilddatenbestand in zwei getrennten Tabellenschemata vor, die im Zuge der Weiterentwicklung der einzelnen Teilsysteme unabhängig voneinander entstanden waren. Um eine einheitliche, redundanzfreie Abfrage über alle Bildquellen hinweg zu ermöglichen, wurde im Rahmen dieser Arbeit eine vereinheitlichte Tabelle \texttt{bears\_images\_unified} eingeführt. Die Migration erfolgte in drei Schritten, die jeweils in einem eigenständigen, einmalig auszuführenden Skript festgehalten sind:
+\paragraph{Zwischenspeicherung.}
 
-\begin{enumerate}
-    \item \texttt{Create\_status\_table.py} — Anlage einer Tabelle \texttt{app\_status} zur Nachverfolgung von Anwendungszuständen (u.\,a. Zeitpunkt der letzten Prüfung auf neue Bilder).
-    \item \texttt{create\_unified\_table.py} — Anlage des neuen, vereinheitlichten Tabellenschemas \texttt{bears\_images\_unified}.
-    \item \texttt{migrate\_to\_unified\_table.py} — Übertragung des Bestands aus den bisherigen Quellen (Dateisystem-basierte Ablage sowie bestehende \texttt{wildlife\_images}-Tabelle) in das neue Schema, unter Beibehaltung der ursprünglichen Tabellen zur Absicherung gegen Datenverlust.
-\end{enumerate}
-
-Dieses Vorgehen folgt dem Prinzip der additiven, nicht destruktiven Migration: Bestehende Tabellen wurden nicht gelöscht oder überschrieben, sondern lediglich um eine konsolidierte Sicht ergänzt, sodass im Fehlerfall jederzeit auf den ursprünglichen Datenbestand zurückgegriffen werden konnte.
-
-Ergänzend wurde im Rahmen dieser Arbeit die Fehlerbehandlung der zentralen Datenzugriffsschicht überarbeitet. In der ursprünglichen Implementierung wurden Datenbankfehler (z.\,B. bei nicht erreichbarem Server) innerhalb der Methoden \texttt{execute\_query}, \texttt{get\_deterrent\_devices}, \texttt{get\_markers} und \texttt{get\_polygons} vollständig abgefangen und lediglich auf der Konsole protokolliert; der jeweilige Aufrufer erhielt in diesem Fall kommentarlos eine leere Ergebnismenge zurück. In der Praxis erschwerte dieses Verhalten die Fehlerdiagnose erheblich, da eine leere Datenbank und eine nicht erreichbare Datenbank aus Sicht der Anwendung ununterscheidbar waren. Im Rahmen dieser Arbeit wurde dieses Verhalten dahingehend angepasst, dass Verbindungsfehler nicht mehr stillschweigend verschluckt, sondern an die aufrufende Ebene weitergereicht werden, wo sie dem Nutzer als konkrete Fehlermeldung angezeigt werden. Zusätzlich wurde ein expliziter Verbindungs-Timeout konfiguriert, um bei nicht erreichbarem Datenbankserver ein zügiges Fehlschlagen anstelle eines minutenlangen Wartens auf Betriebssystemebene zu erzwingen.
-
-\section{Neue Datenlayer und Features in der Karte}
-
-Über die reine Zusammenführung bestehender Layer hinaus wurden im Rahmen dieser Arbeit mehrere Darstellungsmerkmale neu eingeführt bzw. erweitert:
+Gegen dieses Problem stellt Streamlit zwei Dekoratoren bereit, die sich in ihrem
+Einsatzzweck unterscheiden \cite{StreamlitCaching}:
 
 \begin{itemize}
-    \item \textbf{Differenzierte Punktdarstellung der Simulation:} Reale GPS-Punkte und simulierte Alternativschritte werden farblich (blau vs.\ orange) sowie über Radius und Deckkraft visuell unterschieden, sodass auf einen Blick erkennbar ist, welcher Anteil der dargestellten Punkte auf tatsächlichen Messungen beruht.
-    \item \textbf{Kontextbezogene Popups:} Ein Klick auf ein Feature öffnet ein layerspezifisches Popup mit den relevanten Metadaten (z.\,B. Bild-Anzahl je Abschreckungsgerät, Zeitstempel und Saison eines GPS-Punkts, Schrittlänge und Richtungswinkel eines Simulationsschritts).
-    \item \textbf{Automatisches Zoomen beim Einblenden eines Layers:} Wird ein Layer über die Checkbox aktiviert, berechnet die Karte automatisch die Begrenzungsbox (\emph{Bounding Box}) der zugehörigen Daten und fährt die Ansicht mittels \texttt{fitBounds} bzw. \texttt{flyTo} entsprechend heran, sodass Nutzer die neu eingeblendeten Daten nicht manuell suchen müssen.
-    \item \textbf{Statusanzeige neu eingetroffener Bilder:} Wie in Abschnitt~4.2.1 beschrieben, informiert ein Widget in der Seitenleiste über neu hinzugekommene Bilder seit der letzten Prüfung.
+    \item \texttt{st.cache\_data} ist für Daten gedacht, also für serialisierbare
+    Rückgabewerte wie Tabellen, Zahlenfelder oder Zeichenketten. Jeder Aufruf erhält eine
+    eigene Kopie des Ergebnisses, wodurch ungewollte Veränderungen durch einen Aufrufer
+    andere Aufrufer nicht beeinflussen.
+    \item \texttt{st.cache\_resource} ist für globale Betriebsmittel gedacht, die sich
+    nicht serialisieren lassen - etwa Datenbankverbindungen oder geladene Modelle. Alle
+    Durchläufe und alle Sitzungen teilen sich dasselbe Objekt, ohne es zu kopieren. Das
+    Objekt muss daher nebenläufigkeitssicher sein, und Änderungen daran wirken sich auf
+    alle Nutzer aus.
 \end{itemize}
 
-\section{Interaktions- und Visualisierungskonzepte}
+Die Unterscheidung ist nicht formal: Ein geladenes Simulationsmodell gehört in die zweite
+Kategorie, ein daraus berechnetes Ergebnis in die erste. Kapitel~\ref{chap:implementierung}
+zeigt, wo in der Anwendung welcher Dekorator eingesetzt wird.
+
+\paragraph{Einbindung eigener Komponenten.}
+\label{par:komponenten}
+
+Streamlit bringt kein Kartenwidget mit dem benötigten Funktionsumfang mit. MapLibre GL JS
+muss deshalb als eigene Komponente eingebunden werden. Dafür bestehen zwei Wege, die sich
+grundlegend unterscheiden \cite{StreamlitComponents}.
+
+Gemeinsam ist beiden, dass die Komponente als eigenständige Webseite in einem
+\texttt{iframe} dargestellt wird. Sie läuft damit in einem eigenen Dokument und hat keinen
+direkten Zugriff auf die umgebende Streamlit-Seite.
+
+\textbf{Statische Komponenten} werden über \texttt{components.html()} erzeugt. Die Funktion
+nimmt eine Zeichenkette mit HTML entgegen und bettet sie in einen \texttt{iframe} ein. Die
+Übertragung verläuft nur in eine Richtung: Die Komponente zeigt an, was Python ihr
+mitgibt, meldet aber nichts zurück.
+
+\textbf{Bidirektionale Komponenten} werden über \texttt{declare\_component()} erzeugt. Beim
+Aufruf übergebene Argumente erreichen die Komponente; ruft deren JavaScript-Code
+\texttt{Streamlit.setComponentValue()} auf, gelangt der übergebene Wert zurück nach
+Python. Streamlit führt daraufhin das Skript erneut aus, und der Aufruf der Komponente
+liefert in diesem Durchlauf den neuen Wert. Da nur ein einzelner Wert übergeben werden
+kann, müssen mehrere Angaben in einem Objekt zusammengefasst werden.
+
+Der Unterschied entspricht strukturell dem zwischen \texttt{folium\_static()} und
+\texttt{st\_folium()} aus Abschnitt~\ref{subsec:leaflet}: Auch dort steht eine
+Einbahnstraße einer Verbindung mit Rückkanal gegenüber. Welcher Weg in dieser Arbeit
+gewählt wurde, welche Folgen das hat und wie der fehlende Rückkanal umgangen wird,
+behandelt Kapitel~\ref{chap:implementierung}.
+
+% =====================================================================
+\section{Bewegungsmodellierung und Kamerafallendaten}
+\label{sec:fachliche-grundlagen}
+
+Dieser Abschnitt führt die fachlichen Grundlagen ein, die für die Erweiterung des
+Bewegungsmodells und für den statistischen Vergleich gebraucht werden.
+
+\subsection{Bewegungsökologie und Step-Selection-Funktionen}
+\label{subsec:bewegungsoekologie}
+
+\paragraph{Trajektorie, Schritt und Drehwinkel.}
+
+In der Bewegungsökologie wird die Bewegung eines Tieres als Folge einzelner Schritte
+beschrieben. Ein \emph{Schritt} ist der Vektor zwischen zwei aufeinanderfolgenden
+Positionen $x_{t-1}$ und $x_{t}$ im Zeitabstand $\Delta t$. Zwei Größen beschreiben ihn
+vollständig:
+
+\begin{itemize}
+    \item die \emph{Schrittlänge} $l$, also die zurückgelegte Entfernung,
+    \item der \emph{Drehwinkel} $\theta$, also die Richtungsänderung gegenüber dem
+    vorherigen Schritt.
+\end{itemize}
+
+Fast alle Bewegungsmodelle setzen hier an. Die Zerlegung verlangt allerdings gleichmäßige
+Zeitabstände zwischen den Positionen, und das ist bei echten Telemetriedaten wegen
+Messlücken nicht durchgängig gegeben.
+
+\paragraph{Korrelierter Zufallspfad.}
+
+Das einfachste Modell ist der einfache Zufallspfad: Jeder Schritt bekommt eine neue,
+gleichverteilt gezogene Richtung. Echte Tiere laufen nicht so. Sie behalten eine Richtung
+über mehrere Schritte bei. Diese Eigenschaft heißt Richtungstreue.
+
+Der \emph{korrelierte Zufallspfad} bildet sie ab: Der Drehwinkel wird nicht
+gleichverteilt gezogen, sondern aus einer Verteilung, die sich um null häuft. Üblich ist
+dafür die von-Mises-Verteilung, das Gegenstück zur Normalverteilung für Winkel. Ihre Dichte
+lautet
+
+\begin{equation}
+    p(\theta) \;=\; \frac{1}{2\pi I_{0}(\kappa)}\,
+    \exp\!\bigl(\kappa \cos(\theta - \mu)\bigr),
+    \label{eq:vonmises}
+\end{equation}
+
+mit der mittleren Richtung $\mu$, dem Konzentrationsparameter $\kappa$ und der
+modifizierten Besselfunktion erster Art nullter Ordnung $I_{0}$.
+
+$\kappa$ steuert das Verhalten vollständig. Bei $\kappa = 0$ ist die Verteilung über den
+Kreis gleichmäßig, das Tier läuft also richtungslos umher. Je größer $\kappa$, desto stärker
+konzentriert sich die Verteilung auf die bisherige Richtung und desto gestreckter wird die
+Bewegung.
+
+Wichtig für die Anwendung: $\kappa$ lässt sich aus Daten schätzen. Für beobachtete
+Drehwinkel $\theta_{1},\dots,\theta_{n}$ ist die mittlere resultierende Länge
+
+\begin{equation}
+    \rho \;=\; \frac{1}{n}\sum_{j=1}^{n} \cos\theta_{j}.
+    \label{eq:rho}
+\end{equation}
+
+Zwischen $\rho$ und $\kappa$ gilt $A(\kappa) = I_{1}(\kappa)/I_{0}(\kappa) = \rho$; gesucht
+ist also $\kappa = A^{-1}(\rho)$. Diese Umkehrung lässt sich nicht geschlossen angeben und
+wird in der Praxis genähert.
+
+Anschaulich misst $\rho$, wie geradlinig die Bewegung ist: $+1$ heißt, jeder Schritt setzt
+die Richtung des vorherigen genau fort, $0$ heißt richtungslos, negative Werte heißen
+überwiegend Hin und Her.
+
+\paragraph{Step-Selection-Funktionen.}
+
+Step-Selection-Funktionen (SSF) verbinden Bewegung mit Umweltpräferenz. Das Prinzip ist
+einfach: Jedem beobachteten Schritt werden $k$ \emph{mögliche} Schritte gegenübergestellt.
+Sie starten am selben Punkt, führen aber zu zufällig gezogenen Zielen. Aus dem Vergleich
+der Umwelteigenschaften am echten Ziel mit denen an den Alternativen lässt sich schätzen,
+was bevorzugt und was gemieden wird \cite{Thurfjell2014}.
+
+Die Methode ist in der Bewegungsökologie etabliert und wird unter anderem für Habitatwahl,
+Wanderkorridore und Mensch-Wildtier-Konflikte eingesetzt \cite{Thurfjell2014}. Wichtig ist
+dabei, wie die Alternativschritte gezogen werden: Das Ziehverfahren beeinflusst die
+Schätzung systematisch \cite{Forester2009}.
+
+Eine Weiterentwicklung ist die integrierte Step-Selection-Analyse. Sie gibt die Annahme auf,
+dass Bewegungseigenschaften und Umweltpräferenz unabhängig voneinander sind, und schätzt
+beides gemeinsam \cite{Avgar2016}. Das R-Paket \texttt{amt} stellt dafür Werkzeuge bereit
+\cite{Signer2019}.
+
+\paragraph{Einordnung für diese Arbeit.}
+
+Das SSF-Prinzip wird hier in einer bestimmten Richtung verwendet, und das ist für die
+Abgrenzung wichtig.
+
+Die klassische Anwendung ist \emph{analytisch}: Aus beobachteten Schritten und erzeugten
+Alternativen werden Präferenzparameter geschätzt, meist über bedingte logistische
+Regression. Dieser Schritt findet hier nicht statt. Es wird keine Regression gerechnet und
+es werden keine Präferenzkoeffizienten geschätzt.
+
+Verwendet wird nur der \emph{erzeugende} Teil: An jeder Position gibt es eine Menge
+erreichbarer Kandidatenschritte, aus der einer ausgewählt wird. Die Auswahl erfolgt
+gewichtet, nach Richtungstreue und in der erweiterten Fassung zusätzlich nach dem Gelände.
+Das Ergebnis ist kein Schätzwert, sondern ein simulierter Pfad.
+
+Bei der Bewertung der Ergebnisse ist das zu beachten: Die erzeugten Pfade sind keine aus
+Daten abgeleiteten Aussagen über Präferenzen, sondern Realisierungen eines Modells, dessen
+Parameter teils aus den Karpaten-Daten gemessen und teils gesetzt sind.
+
+\subsection{Gewichtete Schwerpunktbildung}
+\label{subsec:schwerpunkt}
+
+Ein letzter Baustein stammt nicht aus der Bewegungsökologie, sondern aus einem anderen
+Anwendungsgebiet.
+
+Geyer, Melzer, Dünnweber und Sarkar beschreiben ein Verfahren zur Lokalisierung von
+Fußpositionen auf Bodensensormatten \cite{GeyerMelzerDuennweber2026}. Die Sensorfläche ist
+dort in Felder unterteilt, die entlang ihrer Diagonalen nochmals in Dreiecke zerlegt sind.
+Betritt ein Fuß die Fläche, werden mehrere dieser Dreiecke unterschiedlich stark aktiviert.
+
+Die Position wird dann nicht als Mittelpunkt der aktivierten Fläche bestimmt, sondern als
+gewichteter Schwerpunkt \cite[Formel~(1)]{GeyerMelzerDuennweber2026}:
+
+\begin{equation}
+    P \;=\; \frac{\sum_{i=1}^{n} w_{i}\, p_{i}}{\sum_{i=1}^{n} w_{i}} .
+    \label{eq:schwerpunkt}
+\end{equation}
+
+Dabei ist $P$ die gesuchte Position, $p_{i}$ der Mittelpunkt des $i$-ten aktivierten
+Dreiecks und $w_{i}$ dessen Aktivierungswert. Die Gewichtung bewirkt, dass die berechnete
+Position sich zu den stärker aktivierten Bereichen hin verschiebt, also dorthin, wo der
+größere Teil des Fußes aufliegt.
+
+Für die vorliegende Arbeit ist weniger der konkrete Anwendungsfall von Bedeutung als die
+zugrunde liegende Idee: Aus einer Menge unterschiedlich stark bewerteter Flächenstücke wird
+ein einzelner, nach diesen Bewertungen gewichteter Bezugspunkt bestimmt. Dieselbe Aufgabe
+stellt sich bei der Richtungswahl in strukturiertem Gelände, wenn aus einer Menge
+unterschiedlich attraktiver Geländezellen ein Ziel abgeleitet werden soll.
+Kapitel~\ref{chap:implementierung} beschreibt die Übertragung.
+
+\subsection{Kamerafallen und Aktivitätsmuster}
+\label{subsec:kamerafallen}
+
+\paragraph{Detektionen statt Trajektorien.}
+
+Kamerafallen liefern eine ganz andere Datenform als GPS-Telemetrie. Eine Kamera löst aus,
+wenn sich vor ihr etwas bewegt, und speichert Bild und Zeitpunkt. Daraus folgen drei
+Einschränkungen.
+
+Erstens lässt sich das fotografierte Tier meist nicht als Individuum bestimmen. Zwei
+Aufnahmen können dasselbe Tier zeigen oder zwei verschiedene.
+
+Zweitens ist zwischen zwei Aufnahmen kein Bewegungszusammenhang bekannt. Aus Detektionen an
+verschiedenen Kameras lässt sich kein Weg rekonstruieren, weil weder feststeht, ob es
+dasselbe Tier war, noch welchen Weg es genommen hätte.
+
+Drittens wird nur punktuell beobachtet. Erfasst wird, was sich im Bereich der Kamera bewegt;
+über alles dazwischen gibt es keine Information.
+
+Deshalb gibt es in dieser Arbeit keinen räumlichen Pfadvergleich zwischen Simulation und
+japanischen Realdaten: Auf der Seite der Realdaten gibt es keine Pfade, mit denen man
+vergleichen könnte. Der Vergleich wird stattdessen auf die Zeit verlagert.
+
+\paragraph{Aktivitätsmuster als zirkuläre Daten.}
+
+Ohne Individualerkennung lässt sich aus Kamerafallendaten trotzdem das zeitliche
+Aktivitätsmuster ableiten. Die Idee: Die Uhrzeiten der Auslösungen sind eine Stichprobe aus
+der Tagesaktivität der Population \cite{Rowcliffe2014}.
+
+Uhrzeiten sind dabei keine gewöhnlichen Zahlen, sondern \emph{zirkuläre} Daten. Der Tag ist
+ein geschlossener Kreis: 23:59~Uhr und 00:01~Uhr liegen zwei Minuten auseinander, als Zahlen
+aber fast 24~Stunden. Wer das nicht berücksichtigt, bekommt genau an der Tagesgrenze falsche
+Ergebnisse -- besonders bei nachtaktiven Arten, bei denen sich viele Beobachtungen um
+Mitternacht häufen.
+
+Die Uhrzeit wird deshalb in einen Winkel umgerechnet, wobei 24~Stunden einem vollen Umlauf
+von $2\pi$ entsprechen. Aus diesen Winkeln wird dann eine Dichtefunktion geschätzt, die die
+Aktivität über den Tag beschreibt. Dafür dient eine Kerndichteschätzung mit einem
+zirkulären Kern \cite{RidoutLinkie2009}.
+
+\paragraph{Der Überlappungskoeffizient $\Delta$.}
+
+Liegen zwei solche Dichtefunktionen vor -- etwa für zwei Arten oder, wie hier, für Realdaten
+und Simulation --, stellt sich die Frage, wie ähnlich sie sind. Ridout und Linkie schlagen
+dafür den Überlappungskoeffizienten $\Delta$ vor \cite{RidoutLinkie2009}. Er ist die Fläche
+unter dem Minimum beider Dichten:
+
+\begin{equation}
+    \Delta \;=\; \int_{0}^{24} \min\bigl(f(t),\, g(t)\bigr)\, \mathrm{d}t .
+    \label{eq:delta}
+\end{equation}
+
+Anschaulich ist das die Fläche, die sich beide Kurven teilen. Der Wert liegt zwischen 0
+und 1: $\Delta = 0$ heißt, die Aktivitätszeiten überschneiden sich nicht, $\Delta = 1$ heißt
+gleicher Tagesrhythmus.
+
+Ridout und Linkie geben mehrere Schätzer für $\Delta$ an und prüfen sie in einer
+Simulationsstudie; welcher passt, hängt vom Stichprobenumfang ab \cite{RidoutLinkie2009}.
+Die Referenzimplementierung ist das R-Paket \texttt{overlap} \cite{Meredith2016}.
+
+Das Maß ist der Standard für den Vergleich von Tagesrhythmen. Wichtig ist aber, was es
+\emph{nicht} sagt: $\Delta$ misst nur die zeitliche Übereinstimmung. Über das räumliche
+Verhalten, über zurückgelegte Strecken oder darüber, ob sich zwei Tiere wirklich begegnen,
+sagt der Wert nichts.
+
+\paragraph{Stichprobenumfang und Unsicherheit.}
+
+$\Delta$ wird aus einer begrenzten Zahl von Beobachtungen geschätzt und ist deshalb selbst
+unsicher. Zwei Punkte sind dabei wichtig.
+
+Zum einen braucht es eine Mindestzahl an Beobachtungen. Eine Untersuchung zu
+Aktivitätskurven zeigt, dass sich Mittelwert und Streuung der Schätzung mit wachsender
+Stichprobe schnell stabilisieren, und nennt rund 100~Detektionen als Richtwert
+\cite{Cove2018}.
+
+Zum anderen sollte man einen Einzelwert nie ohne Unsicherheitsangabe berichten. Üblich ist
+das Bootstrap-Verfahren: Aus den vorhandenen Beobachtungen wird wiederholt eine neue
+Stichprobe gleicher Größe mit Zurücklegen gezogen, für jede wird $\Delta$ neu berechnet, und
+aus der Verteilung dieser Werte ergibt sich ein Konfidenzintervall. Das Verfahren braucht
+keine Annahme über die Verteilung und passt deshalb auch zu zirkulären Daten.
+
+Beide Punkte kommen in Kapitel~\ref{chap:implementierung} bei der Berechnung und in
+Kapitel~\ref{chap:diskussion} bei der Einordnung wieder vor.
+
+% ====================================================================
+\chapter{Analyse der bestehenden Systeme und Ableitung der Anforderungen}
+\label{chap:analyse}
+
+Dieses Kapitel beschreibt den Zustand der Systeme zu Beginn dieser Arbeit. Es behandelt die vorhandenen Komponenten, die Datenbestände sowie die übernommenen Modelle. Auf der Grundlage der identifizierten Einschränkungen werden anschließend die Anforderungen an das zu entwickelnde System abgeleitet.
+
+% =====================================================================
+\section{Ausgangszustand des Systems}
+\label{sec:ausgangszustand}
+
+\subsection{Überblick über die Teilsysteme}
+\label{subsec:systemuebersicht}
+
+Zu Beginn dieser Arbeit lagen die Ergebnisse von drei Vorarbeiten vor, die unabhängig
+voneinander entstanden sind. Nur eine davon war eine Anwendung mit Benutzeroberfläche.
+Tabelle~\ref{tab:teilsysteme} nennt die drei Arbeiten,
+Abbildung~\ref{fig:ausgangszustand} zeigt, auf welche Daten sie zugreifen.
+
+\begin{table}[htbp]
+\centering
+\caption{Übersicht der vorgefundenen Vorarbeiten}
+\label{tab:teilsysteme}
+\small
+\begin{tabular}{L{2.9cm} L{5.2cm} L{4.6cm}}
+\toprule
+\textbf{Vorarbeit} & \textbf{Gegenstand} & \textbf{Datenhaltung} \\
+\midrule
+Marcel Lorenz \cite{LorenzBA}
+  & Kartenanwendung mit zwei Seiten: Gerätestandorte in Japan sowie
+    Bewegungspfade der Karpatenbären
+  & MariaDB; Bilder als Dateien im Dateisystem, in der Datenbank nur deren Pfade \\
+\addlinespace
+Fabian Bräu \cite{BreuBA}
+  & Modell zur Erzeugung alternativer Bewegungsschritte
+  & eigene SQLite-Datei und CSV-Datei \\
+\addlinespace
+Anthony Lelchat \cite{LelchatBA}
+  & Übernahme neuer Kameraaufnahmen aus einem E-Mail-Postfach in die Datenbank
+  & dieselbe MariaDB wie die Kartenanwendung \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    font=\footnotesize,
+    >={Stealth[length=2.2mm,width=1.6mm]},
+    every node/.style={align=center, inner sep=2pt},
+    box/.style={draw=black!80, fill=white, line width=0.5pt,
+                minimum height=10mm, text width=#1},
+    box/.default=34mm,
+    db/.style={cylinder, shape border rotate=90, aspect=0.16, draw=black!80,
+               fill=black!4, line width=0.5pt, minimum width=#1,
+               minimum height=12mm, text width=#1},
+    db/.default=24mm,
+    flow/.style={->, line width=0.6pt, draw=black!85},
+    ref/.style={->, densely dashed, line width=0.5pt, draw=black!60},
+    lbl/.style={font=\scriptsize, text=black!75, inner sep=1.5pt, fill=white},
+    head/.style={font=\small\bfseries, text width=40mm},
+]
+
+\def\xA{3.1}
+\def\xB{8.3}
+\def\xC{12.9}
+\def\xDB{5.7}
+
+% --- Spaltenköpfe ---
+\node[head] (hA) at (\xA,0)
+  {Kartenanwendung\\[-1pt]\normalfont\scriptsize\color{black!60}Vorarbeit Lorenz \cite{LorenzBA}};
+\node[head] (hB) at (\xB,0)
+  {Bildextraktion\\[-1pt]\normalfont\scriptsize\color{black!60}Vorarbeit Lelchat \cite{LelchatBA}};
+\node[head] (hC) at (\xC,0)
+  {Bewegungsmodell\\[-1pt]\normalfont\scriptsize\color{black!60}Vorarbeit Bräu \cite{BreuBA}};
+
+% --- Reihe 1 ---
+\node[box=40mm, minimum height=12mm] (app) at (\xA,-1.75)
+  {\textbf{Streamlit-Anwendung}\\[-1pt]\scriptsize zwei getrennte Kartenseiten:\\[-2pt]\scriptsize Japan und Karpaten};
+\node[box=34mm, rounded corners=4pt, fill=black!4] (mail) at (\xB,-1.75)
+  {E-Mail-Postfach\\[-1pt]\scriptsize Microsoft Graph API};
+
+% --- Reihe 2 ---
+\node[box=40mm] (wdb) at (\xA,-3.85)
+  {\ttfamily WildlifeDatabase\\[-1pt]\normalfont\scriptsize Zugriff auf die MariaDB};
+\node[box=37mm] (ext) at (\xB,-3.85)
+  {\scriptsize\ttfamily WildlifePicture-\\[-2pt]\scriptsize\ttfamily Extractor\\[-1pt]\normalfont\scriptsize Texterkennung, Dauerprozess};
+\node[box=37mm] (ssm) at (\xC,-3.85)
+  {\scriptsize\ttfamily StepSelectionModel\\[-1pt]\normalfont\scriptsize nur Kandidatenschritte};
+
+% --- Reihe 3 ---
+\node[db=30mm] (maria) at (\xDB,-5.95)
+  {\textbf{MariaDB}\\[-1pt]\scriptsize zentrale Instanz,\\[-2pt]\scriptsize 11 Tabellen};
+\node[db=22mm] (fs)     at (1.15,-5.95)      {Dateisystem\\[-1pt]\scriptsize Bilddateien};
+\node[db=22mm] (sqlite) at (\xC-1.15,-5.95)  {SQLite\\[-1pt]\scriptsize\ttfamily database.db};
+\node[db=22mm] (csv)    at (\xC+1.15,-5.95)  {CSV\\[-1pt]\scriptsize\ttfamily 1\_bears\_RO};
+
+% --- Verbindungen ---
+\draw[flow, <->] (app) -- (wdb) node[lbl, midway] {lesen/schreiben};
+\draw[flow, <->] (wdb.south) -- ([xshift=-5mm]maria.north);
+\draw[flow] (mail) -- (ext);
+\draw[flow] (ext.south) -- ([xshift=5mm]maria.north)
+  node[lbl, pos=0.55, anchor=north] {schreibt direkt};
+\draw[ref] (maria.west) -- (fs.east) node[lbl, midway] {Pfade};
+\draw[flow] (ssm.south -| sqlite.north) -- (sqlite.north);
+\draw[flow] (ssm.south -| csv.north) -- (csv.north);
+
+% --- isoliertes Bewegungsmodell ---
+\begin{scope}[on background layer]
+  \node[draw=black!55, dash pattern=on 3pt off 2pt, line width=0.6pt,
+        rounded corners=5pt, inner sep=7pt,
+        fit=(hC)(ssm)(sqlite)(csv)] (isoC) {};
+\end{scope}
+\node[font=\scriptsize\itshape, text=black!60, anchor=north]
+  at ($(isoC.south)+(0,-2pt)$) {keine Verbindung zu den\\[-2pt]übrigen Teilsystemen};
+
+% --- Legende ---
+\begin{scope}[shift={(3.0,-8.1)}, font=\scriptsize]
+  \draw[flow] (0,0) -- (0.7,0);
+  \node[anchor=west] at (0.8,0) {Datenzugriff};
+  \draw[ref] (3.2,0) -- (3.9,0);
+  \node[anchor=west] at (4.0,0) {Verweis über Dateipfad};
+\end{scope}
+\end{tikzpicture}
+\caption[Ausgangszustand des Systems]{Ausgangszustand des Systems. Nur die
+  Kartenanwendung besitzt eine Oberfläche und greift über
+  \texttt{WildlifeDatabase} auf die MariaDB zu.}
+\label{fig:ausgangszustand}
+\end{figure}
+
+\paragraph{Die vorgefundene Anwendung.} Die Kartenanwendung aus \cite{LorenzBA} hatte genau
+zwei Seiten. Über ein Auswahlelement in der Seitenleiste ließ sich zwischen ihnen wechseln.
+Jede Seite öffnete eine eigene Leaflet-Karte: entweder mit den Gerätestandorten in Japan
+oder mit den Bewegungspfaden der Karpatenbären. Eine gemeinsame Darstellung beider
+Datenbestände gab es nicht. Weitere Funktionen enthielt die Anwendung nicht; insbesondere
+gehörte die Bewegungssimulation nicht dazu.
+
+Das Bewegungsmodell aus \cite{BreuBA} lag
+nur als Quelltext vor und war mit der Kartenanwendung nicht verbunden. Seine Ergebnisse
+waren auf der Karte deshalb nicht zu sehen. Angewendet wurde es allein auf die
+Karpatendaten, denn diese bestehen aus aufeinanderfolgenden Ortungen eines Tieres und lassen
+sich in Schritte zerlegen. Die japanischen Daten geben dagegen Kamerastandorte und
+Auslösezeitpunkte wieder und enthalten keine Bewegungsabfolge eines einzelnen Tieres
+(Abschnitt~\ref{subsec:japandaten}).
+
+Die Bildextraktion aus \cite{LelchatBA} war ebenfalls keine Anwendung, sondern ein
+fortlaufender Prozess: Er holte neue Kameraaufnahmen aus einem E-Mail-Postfach und schrieb
+sie in die Datenbank. Eine Kartendarstellung gehörte nicht zu seinem Umfang. Mit der
+Kartenanwendung teilte er allein den Datenbestand.
+
+\paragraph{Die einzige systemübergreifende Klammer.} Als Verbindung zwischen den Teilen
+diente allein die Klasse \texttt{WildlifeDatabase} (Abbildung~\ref{fig:ausgangszustand}).
+Sie kapselt die Verbindung zur zentralen MariaDB und stellt allgemeine Methoden für
+Abfragen bereit.
+
+\paragraph{Daraus folgende Aufgabenstellung.} Aus diesem Zustand ergibt sich die zentrale
+Aufgabe dieser Arbeit: Die beiden Datenbestände der Kartenanwendung und das bislang
+getrennte Bewegungsmodell sollen in einem gemeinsamen System zusammengeführt werden, sodass
+die Ergebnisse des Modells auf derselben Karte sichtbar werden wie die realen Daten.
+
+
+
+\subsection{Zustand der Kartendarstellung}
+\label{subsec:ausgangszustand-karte}
+
+Beide Kartenansichten beruhten auf Leaflet, eingebunden über Folium. Die Art der Einbindung
+richtete sich jeweils nach dem Zweck der Seite.
+
+Die japanische Ansicht wurde über \texttt{st\_folium()} eingebunden und nutzte die
+Folium-Erweiterung \texttt{Draw}. Damit ließen sich Marker, Rechtecke und Polygone auf der
+Karte zeichnen. Die gezeichneten Objekte gelangten als GeoJSON zurück nach Python und wurden
+dort auf Knopfdruck in die Datenbank geschrieben.
+
+Die Karpaten-Ansicht diente der Darstellung der Bewegungsdaten und wurde über
+\texttt{folium\_static()} eingebunden.\footnote{Zwei Aufrufe in
+\texttt{carpathian\_bears.py}, jeweils mit fester Größe von 800$\times$600 Bildpunkten.}
+Diese Funktion gibt die Karte als statisches HTML aus; sie besitzt, wie in
+Abschnitt~\ref{subsec:leaflet} dargelegt, keinen Rückgabewert.
+
+Jede der beiden Seiten erzeugte eine eigene Karteninstanz mit eigener Konfiguration. Beide
+verwendeten den Standard-Renderer von Leaflet, also die Darstellung als Einzelelemente im
+Dokumentbaum.
+
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}{0.48\linewidth}
+  \includegraphics[width=\linewidth]{ausgangs-japan.png}
+  \caption{Japan-Seite}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\linewidth}
+  \includegraphics[width=\linewidth]{ausgangs-karpaten.png}
+  \caption{Karpaten-Seite}
+\end{subfigure}
+\caption[Kartenansichten im Ausgangszustand]{Die beiden Kartenansichten im
+  Ausgangszustand. Nur die Japan-Seite nimmt Eingaben entgegen; die
+  Werkzeugleiste am linken Kartenrand fehlt in der Karpaten-Ansicht.}
+\label{fig:ausgangszustand-karten}
+\end{figure}
+
+
+% =====================================================================
+\section{Datenbestände und Datenhaltung}
+\label{sec:datenbestaende}
+
+\subsection{GPS-Trajektorien der Karpaten-Studie}
+\label{subsec:karpatendaten}
+
+Der umfangreichste Datenbestand stammt aus der in Abschnitt~\ref{sec:motivation}
+erwähnten Telemetriestudie an Europäischen Braunbären in den rumänischen Karpaten. Er liegt
+als Datei \texttt{1\_bears\_RO.csv} vor und umfasst 59.997 Ortungen von 13~Tieren im
+Zeitraum vom 9.~August 2011 bis zum 31.~Juli 2015.
+
+Jede Zeile enthält neben Kennung und Zeitstempel die Koordinaten in EPSG:3844 (siehe
+Abschnitt~\ref{subsec:crs}) sowie vier beschreibende Merkmale: Geschlecht, Altersklasse und
+zwei Angaben zur Jahresphase. Tabelle~\ref{tab:karpaten-merkmale} zeigt deren Verteilung.
+
+\begin{table}[htbp]
+\centering
+\caption{Verteilung der Merkmale im Karpaten-Datensatz ($n = 59.997$)}
+\label{tab:karpaten-merkmale}
+\small
+\begin{tabular}{l r l r}
+\toprule
+\textbf{Jahresphase} & \textbf{Ortungen} & \textbf{Merkmal} & \textbf{Ortungen} \\
+\midrule
+Winter sleep              & 15.441 & männlich  & 36.315 \\
+Den exit and reproduction & 13.199 & weiblich  & 23.682 \\
+Forest fruits             & 15.091 & adult     & 41.052 \\
+Hyperphagia               & 16.266 & juvenil   & 18.945 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Zwei Eigenschaften dieses Bestands sind für die weitere Arbeit bedeutsam.
+
+Erstens sind die Jahresphasen bereits Bestandteil der Rohdaten. Sie wurden nicht im Rahmen
+dieser Arbeit oder einer Vorarbeit gebildet, sondern liegen als eigene Spalte vor. Die
+Bezeichnungen folgen dem Jahreszyklus des Braunbären und sind damit fachlich und nicht
+kalendarisch begründet.
+
+Zweitens sind die Ortungen sehr ungleich auf die Tiere verteilt. Der am dichtesten
+beobachtete Bär trägt 12.313 Ortungen bei, der am dünnsten beobachtete 1.024 - ein
+Verhältnis von etwa zwölf zu eins. Auswertungen über alle Tiere hinweg werden dadurch von
+wenigen Individuen dominiert. Dieser Umstand ist bei der Bewertung der in
+Kapitel~\ref{chap:implementierung} vorgenommenen Messungen zu berücksichtigen.
+
+
+
+\subsection{Kameradaten der Region Aizu}
+\label{subsec:japandaten}
+
+Der japanische Datenbestand ist strukturell anders und deutlich kleiner. Er besteht aus
+20~Gerätestandorten im Aizu-Becken (Präfektur Fukushima) sowie den dort erfassten
+Kameraaufnahmen. Die Standorte verteilen sich auf vier räumlich getrennte Gruppen,
+erkennbar an den Kennungen der Form \texttt{001xxx} bis \texttt{004xxx}.
+
+Insgesamt liegen 53~Aufnahmen vor, davon zwei aus Testläufen, mit denen die Bildübernahme
+aus dem Postfach geprüft wurde; sie werden bei allen Auswertungen ausgeschlossen. Nach Abzug einer weiteren Aufnahme ohne Zeitstempel
+verbleiben 50~verwertbare Zeitpunkte auf 18~Gerätekennungen. Nur zehn davon stehen in der
+Standortliste; die übrigen acht treten erst in Aufnahmen vom November und Dezember~2025 auf
+und haben keine Koordinaten. Diese Bilder sind zeitlich, nicht aber räumlich auswertbar.
+
+Festzuhalten ist ferner, was über die Geräte \emph{nicht} gespeichert ist. Die Gerätetabelle
+führt je Eintrag nur eine Kennung, den Namen des Bildverzeichnisses und die Koordinaten.
+Die Bauart des Geräts oder die Art der Abschreckung ist nicht hinterlegt. Auswertungen, die
+zwischen Gerätetypen unterscheiden, sind auf dieser Datengrundlage folglich nicht möglich.
+
+\subsection{Datenhaltung im Ausgangszustand}
+\label{subsec:datenhaltung}
+
+Welches Teilsystem auf welche Ablage zugriff, zeigt Abschnitt~\ref{subsec:systemuebersicht}.
+Hier geht es um die zentrale MariaDB-Instanz selbst.
+
+Das Schema umfasste elf Tabellen: die Gerätestandorte, die von Nutzenden gezeichneten Marker
+und Flächen, die Bildmetadaten, die Karpaten-Ortungen sowie einige abgeleitete Tabellen zu
+Aktionsräumen und Tagesdistanzen. Drei Eigenschaften erschweren die Arbeit damit.
+
+Erstens sind alle Zeitstempel als Zeichenketten gespeichert, nicht als Datumstyp. Ein Filter
+über einen Zeitraum muss deshalb auf Text arbeiten oder erst nach dem Laden in der Anwendung
+greifen. Die Datenbank kann die Ergebnismenge also nicht wirksam verkleinern.
+
+Zweitens liegen die Koordinaten in einfachen Gleitkommaspalten. Räumliche Datentypen kommen
+nicht zum Einsatz. Wer nur den sichtbaren Kartenausschnitt laden will, muss die Spalten
+einzeln vergleichen.
+
+Drittens liegen die Kameraaufnahmen in zwei Tabellen. \texttt{image\_metadata} speichert je
+Aufnahme einen Dateipfad, das Bild selbst liegt im Dateisystem. \texttt{wildlife\_images}
+speichert die Bilddaten direkt in der Datenbank. Der Grund dafür ist dokumentiert: Für die
+Anbindung der Bildextraktion wurde die Ablage von Dateipfaden auf Bilddaten umgestellt
+\cite[S.~21]{LelchatBA}, die ältere Tabelle blieb daneben bestehen. Eine Abfrage über alle
+Bilder war damit in einem Schritt nicht möglich: Je nachdem, welches Teilsystem eine
+Aufnahme eingetragen hatte, stand sie in der einen oder in der anderen Tabelle.
+
+Hinzu kommt ein Fehler in den Karpaten-Ortungen. Die Tabelle \texttt{bears\_tracking}
+enthielt 116.014 Datensätze, die Quelldatei aber nur 59.997 Ortungen. Der Grund liegt im
+Import: Er liest zwei CSV-Dateien ein und hängt sie aneinander, obwohl beide denselben
+Zeitraum abdecken und sich nur in zusätzlichen Saisonangaben unterscheiden. Die Tabelle hat
+keinen eindeutigen Schlüssel aus Tier und Zeitpunkt, deshalb wurden die doppelten Ortungen
+beim Einfügen nicht abgewiesen. Auf der Karte würde dieselbe Position mehrfach gezeichnet,
+und abgeleitete Werte wie Schrittlängen wären falsch.
+
+% =====================================================================
+\section{Übernommene Modelle und ihre Grenzen}
+\label{sec:uebernommene-modelle}
+
+\subsection{Bewegungssimulation}
+\label{subsec:simulationsmodell}
+
+\paragraph{Aufbau des Modells.}
+
+Das Bewegungsmodell aus \cite{BreuBA} setzt das Prinzip der Step-Selection-Funktionen um
+(Abschnitt~\ref{subsec:bewegungsoekologie}). Die Kandidatenerzeugung liegt in der Klasse
+\texttt{StepSelectionModel}. Das Zerlegen der realen Trajektorien in Segmente und deren
+Trennung nach Jahresphasen übernimmt die Klasse \texttt{StepTrajectorySet}, die
+\texttt{StepSelectionModel} dafür heranzieht.
+
+Die Schrittlänge kommt aus einer Tabelle mit Geschwindigkeitswerten, die in der
+mitgelieferten SQLite-Datei liegt. Die Tabelle hat 384~Einträge, gegliedert nach Geschlecht,
+Altersklasse, Jahresphase und Stunde des Tages: zwei Geschlechter, zwei Altersklassen, vier
+Jahresphasen und 24~Stunden. Je Eintrag stehen ein Mindest-, ein Höchst- und ein Medianwert
+der Geschwindigkeit, wobei diese drei Werte bei 284 der 384~Einträge übereinstimmen.
+
+Die Alternativschritte entstehen so: Für jeden realen Schritt sucht das Modell die mediane
+Geschwindigkeit zu Geschlecht, Alter, Jahresphase und Stunde und rechnet daraus die
+Schrittlänge. Dann bildet es $k$~Alternativen. Deren Richtung wird zufällig und
+gleichverteilt über den ganzen Kreis gezogen. Je Alternative kommt ein Wahrnehmungspunkt in
+200~Metern Entfernung dazu, an dem sich später Geländeeigenschaften auswerten lassen. Der
+reale Schritt wird derselben Liste angefügt und als solcher markiert.
+
+\paragraph{Ausgabe des Modells.}
+
+Die Ausgabe ist eine Liste von Listen: je realem Schritt eine Menge von Kandidaten, jeder
+mit Start- und Endpunkt, Wahrnehmungspunkt, Richtung, Länge und der Markierung, ob er der
+reale Schritt ist.
+
+Das Modell erzeugt damit die Kandidaten. Die Auswahl zwischen ihnen gehört nicht zu seinem
+Umfang: Es gibt keine Bewertungsfunktion und keinen Schritt, der aus mehreren Auswahlen
+einen zusammenhängenden Pfad bildet. Die als Einstiegspunkt vorgesehene Datei
+\texttt{Simulation.py} ist leer.\footnote{Dateigröße 0~Byte im übernommenen Stand des
+Projekts.} Vom Prinzip aus Abschnitt~\ref{subsec:bewegungsoekologie} liegt also die erste
+Hälfte vor - die Menge der verfügbaren Schritte -- nicht aber die zweite.
+
+\paragraph{Was für diese Arbeit ergänzt werden musste.}
+\label{subsubsec:limitationen-simulation}
+
+Neben der Auswahl waren vier Punkte offen.
+
+\textbf{Richtungstreue.} Die Richtungen sind gleichverteilt über den ganzen Kreis. Die
+Richtungspersistenz realer Tierbewegung (Abschnitt~\ref{subsec:bewegungsoekologie}) ist
+darin nicht enthalten. Ein Pfad direkt aus diesen Kandidaten wäre ein einfacher und kein
+korrelierter Zufallspfad.
+
+\textbf{Schrittlänge.} Alle Alternativen eines Schritts haben dieselbe Länge, abgeleitet aus
+dem Median. Mindest- und Höchstwert gehen nicht ein, die Streuung der Schrittlängen damit
+auch nicht -- bei den oben genannten 284~Einträgen gibt es ohnehin keine.
+
+\textbf{Zeitbezug der Schrittlänge.} Die Schrittlänge wird als Strecke einer Stunde
+berechnet, unabhängig davon, wie weit die beiden zugehörigen Ortungen zeitlich
+auseinanderliegen. Da rund ein Fünftel der Messintervalle länger als eine Stunde ist, fallen
+die Kandidaten dort kürzer aus, als es zum Zeitabstand passt.
+
+\textbf{Abhängigkeiten.} Eine eigene Klasse fragt Geländemerkmale über OpenStreetMap ab, ist
+aber nicht an die Schrittauswahl angebunden. Außerdem lädt schon das Erzeugen eines
+\texttt{StepSelectionModel}-Objekts eine Kette weiterer Klassen, die über eine
+Cluster-Analyse bis zu einer kompilierten Fremdbibliothek reicht -- auch dann, wenn nur die
+Schritterzeugung gebraucht wird. Lässt sich diese Bibliothek auf dem Zielsystem nicht laden,
+schlägt bereits der Import fehl.
+
+Aus diesen Punkten folgt die Entscheidung, die benötigte Logik direkt neu zu implementieren
+und nicht das vorhandene Objekt einzubinden (Abschnitt~\ref{sec:uebertragung}).
+
+\subsection{Bildextraktion}
+\label{subsec:bildextraktion}
+
+Die dritte Vorarbeit \cite{LelchatBA} übernimmt neue Kameraaufnahmen automatisch. Die
+Kameras schicken ihre Aufnahmen als E-Mail-Anhang. Das System holt diese Anhänge ab, wertet
+sie aus und trägt sie in die Datenbank ein.
+
+\paragraph{Ablauf.}
+
+Das System läuft als eigener Prozess, getrennt von der Kartenanwendung. Es fragt ein
+Postfach über die Microsoft Graph API ab und meldet sich dabei per OAuth~2.0 als Anwendung
+an, nicht als Benutzer. Die Abfrage läuft in einer Dauerschleife alle zehn Sekunden. Je
+Durchlauf holt das System bis zu 50~ungelesene Nachrichten. Der Filter auf einen festen
+Absender greift danach im Programm, nicht schon in der Abfrage.
+
+Aus jedem Anhang im JPEG-Format gewinnt das System Information auf zwei Wegen:
+
+\begin{itemize}
+    \item \textbf{Aus dem Bild} liest die Texterkennung \texttt{easyOCR} den eingeblendeten
+    Text. Daraus holt ein regulärer Ausdruck den Zeitstempel.
+    \item \textbf{Aus dem Dateinamen} kommt die Gerätekennung. Das System kennt dafür zwei
+    Namensformate. Trägt eine Aufnahme keinen eingeblendeten Zeitstempel -- was vorkommt
+    \cite[S.~25]{LelchatBA} --, stammt die Zeit ersatzweise aus dem Dateinamen. Das gelingt
+    nur bei einem der beiden Formate, weil nur dieses ein Datum in auswertbarer
+    Schreibweise enthält.
+\end{itemize}
+
+Danach schreibt das System die Aufnahme mit Gerätekennung und Zeitstempel in die Datenbank.
+Ein Merkmal hält fest, ob beides bestimmt werden konnte. Ist die Gerätekennung in der
+Gerätetabelle noch nicht vorhanden, legt das System dort einen neuen Eintrag an. Dieser
+Eintrag erhält zunächst die Koordinaten 0/0.
+
+\paragraph{Einordnung der Artbestimmung.}
+
+Die Tierart wird nicht von diesem System bestimmt. An den Kameras im Gelände stehen
+Raspberry-Pi-Rechner, die die Aufnahmen auswerten, Rahmen mit Klassenname und
+Konfidenzwert in das Bild zeichnen und erst dann versenden \cite[S.~8]{LelchatBA}. Die
+Kamera selbst blendet nur Gerätenummer, Zeitpunkt und Temperatur ein. Die Texterkennung
+liest also die Beschriftung dieser Rahmen: Steht darin das Wort \enquote{bear}, wird die
+Aufnahme übernommen, andernfalls verworfen \cite[S.~20]{LelchatBA}.
+
+Die Artangabe stammt damit aus einem vorgeschalteten Modell, dessen Fehlerrate nicht bekannt
+ist; Fehlerkennungen sind dokumentiert \cite[S.~24]{LelchatBA}. Sie wird, wie in
+Abschnitt~\ref{sec:zielsetzung} festgelegt, als gegeben vorausgesetzt und in dieser Arbeit
+weder geprüft noch verbessert.
+
+\paragraph{Zwei Punkte für die Weiterarbeit.}
+
+\begin{itemize}
+    \item \textbf{Schreibrechte auf dem Postfach.} Nach der Verarbeitung versucht das
+    System, die Nachricht als gelesen zu markieren, denn die Abfrage holt nur ungelesene
+    Nachrichten. Das setzt eine Schreibberechtigung auf dem Postfach voraus. Diese war zur
+    Zeit der Vorarbeit nicht erteilt; der Quelltext hält das fest.\footnote{Kommentar in
+    \texttt{WildlifePictureExtractor.py} im Anschluss an die Markierungsanfrage.} Ohne die
+    Berechtigung bleibt eine Nachricht ungelesen und wird im nächsten Durchlauf erneut
+    verarbeitet. Der Verarbeitungsstand liegt damit im Postfach und nicht in der Anwendung.
+
+    \item \textbf{Keine Rückmeldung an die Kartenanwendung.} Extraktion und Kartenanwendung
+    sind nur über die gemeinsame Datenbank verbunden. Die Kartenanwendung erfährt nicht,
+    dass neue Aufnahmen eingetroffen sind; Nutzende müssten selbst nachsehen.
+\end{itemize}
+
+% =====================================================================
+\section{Anforderungen}
+\label{sec:anforderungen}
+
+Aus den vorangegangenen Abschnitten ergeben sich die folgenden Anforderungen. Sie sind
+nummeriert, damit in Kapitel~\ref{chap:implementierung} und
+Kapitel~\ref{chap:diskussion} auf sie verwiesen werden kann.
+
+\subsection{Funktionale Anforderungen}
+
+\begin{description}
+    \item[F1 - Gemeinsame Karte.] Alle Datenbestände sind auf einer einzigen Karte
+    darstellbar. Einzelne Datenebenen lassen sich unabhängig voneinander ein- und
+    ausblenden.
+
+    \item[F2 - Filterung.] Die dargestellten Daten lassen sich nach Tier, Zeitraum und
+    Jahresphase filtern.
+
+    \item[F3 - Eigene Marker und Flächen.] Nutzende können auf der Karte Marker und
+    Flächen anlegen, dauerhaft speichern und wieder entfernen - und zwar unabhängig
+    davon, welche Datenebene betrachtet wird.
+
+    \item[F4 - Zeitlicher Verlauf.] Der zeitliche Ablauf einer Bewegung ist abspielbar,
+    statt nur als abgeschlossene Linie dargestellt zu werden.
+
+    \item[F5 - Gegenüberstellung von Modell und Beobachtung.] Zu einer realen Trajektorie
+    lassen sich die vom Modell erzeugten Alternativen für dasselbe Tier, denselben Tag und
+    dieselben Zeitpunkte anzeigen.
+
+    \item[F6 - Erzeugung zusammenhängender Pfade.] Das Bewegungsmodell erzeugt
+    fortlaufende Pfade. Dazu gehören eine Auswahl zwischen den Kandidatenschritten, eine
+    an realen Daten geschätzte Richtungstreue und eine Bewertung des Geländes.
+
+    \item[F7 - Statistischer Vergleich.] Die Übereinstimmung zwischen simulierter und
+    beobachteter Tagesaktivität wird als Kennzahl mit Unsicherheitsangabe berechnet.
+
+    \item[F8 - Einsicht in die Rohdaten.] Zu jeder Kartendarstellung sind die
+    zugrunde liegenden Datensätze einsehbar.
+
+    \item[F9 - Sichtbarkeit neuer Aufnahmen.] Seit der letzten Betrachtung neu
+    eingetroffene Kameraaufnahmen werden in der Anwendung kenntlich gemacht.
+\end{description}
+
+\subsection{Nicht-funktionale Anforderungen}
+
+\begin{description}
+    \item[N1 - Darstellungsleistung.] Die Darstellung bleibt auch dann nutzbar, wenn
+    mehrere Datenebenen mit zusammen mehreren zehntausend Objekten gleichzeitig sichtbar
+    sind.
+
+    \item[N2 - Keine schwergewichtigen Abhängigkeiten.] Die Anwendung startet und läuft
+    auch dann, wenn eine kompilierte Fremdbibliothek der Vorarbeit nicht ladbar ist.
+
+    \item[N3 - Einheitliche Datenhaltung.] Die Daten werden über eine gemeinsame
+    Zugriffsschicht gelesen. Lokale Dateien dienen allenfalls als Rückfallebene, nicht als
+    eigenständige Quelle.
+
+    \item[N4 - Nachvollziehbare Fehler.] Ist eine Datenquelle nicht erreichbar, wird das
+    kenntlich gemacht. Eine leere Ergebnismenge und eine fehlgeschlagene Verbindung sind
+    für Nutzende unterscheidbar.
+
+    \item[N5 - Reproduzierbarkeit.] Simulationsläufe und daraus abgeleitete Kennzahlen
+    sind bei gleicher Parametrisierung wiederholbar.
+
+    \item[N6 - Übertragbare Konfiguration.] Zugangsdaten und umgebungsabhängige
+    Einstellungen sind nicht fest im Quelltext hinterlegt.
+
+    \item[N7 - Einheitlicher Bildbestand.] Alle Kameraaufnahmen sind über eine einzige
+    Abfrage erreichbar, unabhängig davon, welches Teilsystem sie eingetragen hat.
+
+    \item[N8 - Eindeutigkeit der Ortungen.] Jede Ortung eines Tieres zu einem bestimmten
+    Zeitpunkt wird genau einmal dargestellt und genau einmal in abgeleitete Kennzahlen
+    einbezogen, auch wenn der Datenbestand mehrfach vorliegende Datensätze enthält.
+\end{description}
+
+% ====================================================================
+\chapter{Implementierung}
+\label{chap:implementierung}
+
+\section{Kartenkomponente und Interaktionskonzept}
+\label{sec:kartenvisualisierung}
+
+\subsection{Architekturentscheidung: statische gegen bidirektionale Komponente}
+\label{subsec:architekturentscheidung}
+
+Streamlit bietet zwei Wege, eigenes HTML und JavaScript einzubinden
+(Abschnitt~\ref{par:komponenten}). Beide kamen in Frage, und die Wahl bestimmt den Aufbau des
+ganzen Kapitels.
+
+\paragraph{Die bidirektionale Komponente.} \texttt{declare\_component()} legt einen Rückkanal
+an. Der JavaScript-Teil ruft \texttt{Streamlit.setComponentValue()} auf, und Python erhält
+diesen Wert als Rückgabewert. Eine gezeichnete Fläche oder ein angeklickter Punkt wäre damit
+sofort als Python-Objekt verfügbar.
+
+Dieser Weg verlangt aber ein eigenes Frontend-Projekt: ein Verzeichnis mit
+\texttt{package.json}, Paketen aus dem npm-Ökosystem und einem Übersetzungsschritt, dessen
+Ergebnis vor dem Start der Anwendung vorliegen muss. Auf dem Zielsystem bräuchte man neben
+Python auch Node.js, und jede Änderung an der Karte würde einen neuen Übersetzungslauf nötig
+machen.
+
+\paragraph{Die statische Komponente.} \texttt{components.html()} übergibt eine Zeichenkette
+mit HTML an einen \texttt{iframe} und liefert nichts zurück. Es gibt keinen
+Übersetzungsschritt, keine zweite Laufzeitumgebung und keine Paketverwaltung. Die Komponente
+liegt in einer einzigen Python-Datei, und MapLibre~GL~JS wird zur Laufzeit über ein Content
+Delivery Network geladen.\footnote{Eingebunden ist Version 3.6.2 über \texttt{unpkg.com}, in
+allen Kartenkomponenten dieselbe.}
+
+\paragraph{Entscheidung.} Gewählt wurde \texttt{components.html()}. Der Grund: Das System soll
+an der Hochschule weitergeführt werden. Eine Anwendung, die man mit \texttt{streamlit run}
+startet und deren Kartenlogik in einer lesbaren Python-Datei steht, ist dafür leichter
+zugänglich als eine Anwendung mit getrenntem Frontend-Build. Dazu kommt: Der Rückkanal nützt
+hier wenig. Fast alles, was man auf der Karte tut, betrifft nur die Darstellung. Ebenen
+schalten, Stil wechseln, Kamera bewegen -- das muss Python gar nicht erreichen.
+
+Der Preis ist der fehlende Rückkanal für alles, was die Daten verändert, also für neue Marker
+und Gebiete. Wie er bezahlt wurde, zeigt Abschnitt~\ref{sec:interaktion}.
+
+\subsection{Aufbau der Kartenkomponente}
+\label{subsec:aufbau-karte}
+
+Die Komponente ist eine Funktion namens \texttt{render\_maplibre()}. Sie bekommt die Daten,
+baut daraus ein HTML-Dokument und gibt es über \texttt{components.html()} an Streamlit
+weiter.
+
+\paragraph{Datenübergabe.} Die Daten kommen als GeoJSON an, in fünf Gruppen: die japanischen
+Gerätestandorte mit den dort angelegten Markern und Gebieten, die Karpaten-Trajektorien, die
+simulierten Bewegungen und zwei externe Vergleichsbestände
+(Abschnitt~\ref{sec:externe-quellen}). Sie werden direkt in das HTML-Dokument geschrieben.
+Die Karte fragt deshalb selbst nichts bei der Datenbank ab. Fehlt eine Gruppe, bleibt ihre
+Ebene leer und der Rest der Karte funktioniert weiter. Abbildung~\ref{fig:hauptkarte} zeigt die Karte mit mehreren eingeschalteten Ebenen.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.4\linewidth]{karte-karpaten.png}
+\caption[Hauptkarte mit mehreren Datenebenen]{Hauptkarte mit eingeschalteter
+  Geländedarstellung. Sichtbar sind die GPS-Pfade der Karpatenbären und die simulierten
+  Bewegungen. Links die Ebenenliste mit der Anzahl der Objekte je Gruppe. Im Ausgangszustand
+  lagen diese Bestände auf zwei getrennten Seiten
+  (Abbildung~\ref{fig:ausgangszustand-karten}).}
+\label{fig:hauptkarte}
+\end{figure}
+
+\paragraph{Quellen und Ebenen.} Jede Gruppe bekommt eine eigene Datenquelle. Darauf liegen
+die sichtbaren Ebenen: Punkte als \texttt{circle}, Pfade als \texttt{line}, Gebiete als
+\texttt{fill} mit Umrandung (Abschnitt~\ref{subsec:maplibre}). Ändern sich die Daten, wird
+nur die Quelle ausgetauscht und die Ebenen bleiben. Die Animation nutzt das und tauscht je
+Einzelbild nur die Daten aus.
+
+Neue Ebenen liegen über allen bestehenden und würden die Ortsnamen der Grundkarte verdecken.
+Sie werden deshalb darunter eingefügt.
+
+\paragraph{Stilwechsel.} Wechselt man die Grundkarte, lädt MapLibre den Stil komplett neu.
+Die eigenen Datenebenen gehen dabei verloren, weil sie Teil des Stils sind. Die Komponente
+wartet deshalb, bis der neue Stil geladen ist, und legt die Ebenen danach wieder an.
+
+\paragraph{Grundkarten und Gelände.} Zur Auswahl stehen sieben Grundkarten, vier Vektor- und
+drei Rasterstile. Voreingestellt ist das Luftbild. Nur darauf sieht man, ob ein Pfad über
+Wald, Lichtung oder Siedlung führt. Für jede Rasterquelle ist hinterlegt, bis zu welcher
+Zoomstufe der Dienst Kacheln liefert; ohne diese Angabe fordert die Karte Kacheln an, die es
+nicht gibt.
+
+Dazu kann man eine dreidimensionale Ansicht einschalten. Sie beruht auf einem Höhenmodell in
+Kachelform (Abschnitt~\ref{subsec:hoehenmodelle}) und erzeugt zwei Dinge: eine Schattierung,
+die die Geländeform zeigt, und eine Anhebung der Karte selbst. Ist die Höhenquelle nicht
+erreichbar, schaltet sich der Schalter von selbst aus und zeigt einen Hinweis. Die Karte
+läuft dann zweidimensional weiter. Dasselbe Verhalten gibt es an anderen Stellen im System
+(Abschnitt~\ref{sec:datenhaltung}).
+
+
+ 
+
+\subsection{Interaktion auf der Karte}
 \label{sec:interaktion}
 
-Die Filterung der Carpathian- und Simulationsdaten (Bärenauswahl, Zeitraum, Saison, Anzahl der Alternativschritte) erfolgt jeweils über ein Streamlit-\texttt{form}-Element. Diese Entwurfsentscheidung ist unmittelbar mit dem in Abschnitt~4.2.2 beschriebenen Performance-Problem verknüpft: Ohne Gruppierung in einem \texttt{form}-Element würde bereits jede einzelne Änderung eines Filterwidgets (z.\,B. das Verschieben eines Schiebereglers) einen vollständigen Neudurchlauf des Anwendungsskripts samt Neuberechnung aller abhängigen Daten auslösen. Durch die Bündelung mehrerer Eingabefelder in einem Formular mit explizitem Bestätigungs-Button ("Anwenden") wird die serverseitige Neuberechnung auf den tatsächlichen Bestätigungszeitpunkt beschränkt.
+Weil die Komponente statisch ist, fließt vom Browser kein Wert nach Python zurück.
 
-Insgesamt verfolgt die Anwendung damit ein zweistufiges Interaktionskonzept: Fachliche Filterentscheidungen (welche Daten werden geladen) werden serverseitig über Streamlit-Formulare mit expliziter Bestätigung verarbeitet, während rein darstellungsbezogene Interaktionen (welche bereits geladenen Daten sind sichtbar, welcher Kartenausschnitt wird angezeigt) vollständig clientseitig in JavaScript ohne Server-Interaktion erfolgen. Diese Trennung reduziert die Anzahl der notwendigen Server-Roundtrips auf ein Minimum und war eine zentrale Voraussetzung, um die in Kapitel~5 diskutierte gefühlte Reaktionsgeschwindigkeit der Anwendung zu erreichen.
-% Claude Ende Kapitel 4
+\paragraph{Was im Browser bleibt.} Die meisten Aktionen ändern nur die Anzeige: Ebenen ein-
+und ausblenden, den Stil wechseln, die Karte bewegen, ein Objekt anklicken. Das passiert
+alles im Browser, ohne Rerun (Abschnitt~\ref{subsec:streamlit}).
 
-% ==================== KAPITEL 5 ====================
-% claude begin kapitel 5
+Beim Einblenden springt die Karte zur Ebene. Punkte bei (0,0) lässt sie dabei weg, denn
+Geräte ohne Standort stehen mit diesen Werten in der Datenbank
+(Abschnitt~\ref{subsec:japandaten}).
+
+\paragraph{Der Kartenzustand.} Wendet man einen Filter an, baut Streamlit die Seite neu auf,
+und die Karte würde auf ihre Ausgangsansicht zurückspringen. Die Komponente schreibt den
+Kartenzustand deshalb in die Adresszeile: Mittelpunkt, Zoomstufe, Stil, Zustand des
+3D-Schalters und die sichtbaren Ebenen. Das ändert nur die Adresse und lädt die Seite nicht
+neu. Weil eine Kartenbewegung viele Ereignisse auslöst, wird höchstens alle 400~Millisekunden
+geschrieben. Beim nächsten Aufbau liest Python diese Werte aus der Adresse und gibt sie an
+die Komponente zurück, die an derselben Stelle startet.
+
+Verbieten die Sicherheitsregeln des Browsers den Zugriff auf das umgebende Fenster, bleibt
+die Karte nutzbar und verliert nur diese Zustandsübernahme.
+
+\paragraph{Neue Marker und Gebiete.} Nur diese Aktion geht an Python, und sie nutzt denselben
+Weg (Quelltext~\ref{lst:rueckweg}). Die Karte hat dafür ein eigenes Bedienfeld mit zwei Modi.
+Im Markermodus setzt ein Klick einen Punkt, im Gebietsmodus umrandet man eine Fläche durch
+mehrere Klicks. Die Eingabe erscheint währenddessen als eigene Vorschauebene. Einzelne Punkte
+lassen sich zurücknehmen, und bis zum Speichern kann man alles abbrechen. Der Speichern-Knopf
+bleibt gesperrt, bis die Eingabe gültig ist: bei einem Gebiet mindestens drei Punkte und ein
+Name.
+
+\begin{lstlisting}[language=JavaScript, caption={Derselbe Weg über die Adresszeile, einmal
+ohne und einmal mit Neuladen. Gekürzt aus \texttt{saveStateToUrl()} und
+\texttt{saveDrawing()}.}, label={lst:rueckweg}]
+// Kamera und Ebenen: nur die Adresse aendern, kein Neuladen
+parentWin.history.replaceState(null, '', newUrl);
+
+// Neues Gebiet: Werte anhaengen, dann echte Navigation
+url.searchParams.set('new_polygon_name', nameInput.value.trim());
+url.searchParams.set('new_polygon_coords', JSON.stringify(drawState.polygonPoints));
+parentWin.location.href = url.toString();
+\end{lstlisting}
+
+Beim Speichern schreibt die Komponente die Geometrie in die Adresszeile und lädt die Seite
+wirklich neu. Python findet die Werte im nächsten Durchlauf, legt den Eintrag in der
+Datenbank an und löscht die Werte sofort aus der Adresse. Sonst würde beim nächsten Laden
+ein zweiter Eintrag entstehen. Danach wird der Zwischenspeicher der japanischen Daten
+geleert, weil er sonst den alten Stand behält und der neue Marker nicht erscheint
+(Abschnitt~\ref{subsec:streamlit}).
+
+
+\paragraph{Löschen, Filter und Rohdaten.} Gelöscht wird unterhalb der Karte in einer
+Tabelle, also mit normalen Streamlit-Elementen, deren Wert Python ohnehin bekommt. Der Knopf
+bleibt gesperrt, bis man zusätzlich bestätigt. Die beiden teuren Filter für Karpaten und
+Simulation stecken jeweils in einem Formular: Die Eingaben werden gesammelt und erst mit
+\enquote{Anwenden} gemeinsam wirksam. Sonst würde jede einzelne Änderung einen Neuaufbau
+samt Datenbankabfrage auslösen. Unter der Karte stehen dieselben Daten zusätzlich als
+Tabelle, nach Quelle in Reiter getrennt.
+
+
+
+\section{Integration der Teilsysteme und Vereinheitlichung der Datenhaltung}
+\label{sec:integration}
+\subsection{Anbindung der Bewegungssimulation}
+  \label{subsec:anbindung-simulation}
+
+      Die Bewegungssimulation sollte als eigene Ebene in das System eingebunden
+  werden, sodass sich reale und simulierte Bewegungen in derselben Karte
+  vergleichen lassen. Das übernommene System liest dafür GPS-Daten aus einer
+  SQLite-Datenbank und bildet daraus Trajektoriensegmente: Ein Segment endet bei
+  einer Zeitlücke von mehr als 1,5~Stunden und wird zusätzlich an Saisongrenzen
+  getrennt. Zu jedem realen Schritt erzeugt das Modell dann einen Fächer aus
+  Alternativen, deren Länge aus einer Tabelle mit Mediangeschwindigkeiten folgt
+  und deren Richtung gleichverteilt über den Vollkreis gezogen wird.
+
+  \paragraph{Vorgehen bei der Anbindung.} Für die Anbindung wurde eine eigene
+  Integrationsschicht geschrieben. Sie stellt nach außen nur zwei Funktionen
+  bereit: eine liefert die auswählbaren Bären mit ihren Saisons, die andere
+  liefert zu einer Auswahl fertiges GeoJSON. Damit hat die Simulation dieselbe
+  Schnittstelle wie alle anderen Datenbestände, und die Karte behandelt sie wie
+  eine gewöhnliche Ebene (Abschnitt~\ref{subsec:aufbau-karte}). Das Modell selbst
+  bleibt unverändert.
+
+  \paragraph{Nur die benötigten Teile ausführen.} Der Einstiegspunkt des
+  Originals führt drei Schritte nacheinander aus: Segmente bilden, nach Saison
+  trennen und anschließend geometrische Mediane der Cluster bestimmen. Der dritte
+  Schritt zieht eine Clusteranalyse nach sich und bringt zwei zusätzliche Pakete mit, \texttt{hdbscan} und \texttt{scipy}, ohne die sich das Modul nicht laden lässt.
+
+Die Schritterzeugung braucht diesen Schritt aber nicht: Das dort gesetzte Attribut   \texttt{local\_geometric\_median} wird an keiner Stelle der Schritterzeugung
+  gelesen. Die Integrationsschicht bildet die Segmente deshalb direkt aus der
+  Datenbank, nach denselben vier Regeln wie das Original, und lässt die
+  Clusteranalyse aus. Die Schritterzeugung braucht nur die
+  Geschwindigkeitstabelle und die geometrischen Hilfsfunktionen.
+
+  \paragraph{Zustand über mehrere Aufrufe.} Das Original hält eine offene
+  Datenbankverbindung. Streamlit führt das Skript bei jeder Interaktion erneut
+  aus, und zwar aus wechselnden Threads, während eine SQLite-Verbindung an
+  genau einen Thread gebunden ist. Die Geschwindigkeitstabelle wird deshalb
+  einmal vollständig gelesen und danach aus dem Arbeitsspeicher bedient.
+
+  \paragraph{Schrittlänge und Messintervall.} Die Länge eines Schrittes ergibt
+  sich im Original aus der Mediangeschwindigkeit multipliziert mit einer Stunde.
+  Die Karpaten-Ortungen liegen aber nicht durchgehend eine Stunde auseinander:
+  Bei rund 80~\% der Zeitabstände ist es etwa eine Stunde, bei etwa 13~\% etwa zwei Stunden, bei knapp 7~\% mehr. Betrachtet man einen einzelnen
+  Schritt für sich, spielt das keine Rolle. Sobald mehrere Schritte zu einem Pfad
+  zusammengesetzt werden, schon: Bei einer Zweistundenlücke wären die Alternativen nur halb so lang wie der reale Schritt, und der simulierte Pfad bliebe hinter dem realen Tier zurück. Die Schrittlänge kann deshalb mit der tatsächlich verstrichenen Zeit skaliert
+werden. Auf der Hauptkarte ist das abgeschaltet, weil die Segmente dort ohnehin
+an Lücken über 1,5~Stunden getrennt sind; in der Animation ist es aktiv.
+
+  Zusätzlich erhielt die Schritterzeugung einen eigenen Zufallsgenerator. Mit einem festen Startwert liefert ein Lauf wieder dasselbe
+  Ergebnis, was für die automatisierten Tests und für reproduzierbare Abbildungen Voraussetzung ist.
+
+  \paragraph{Prüfung der Gleichwertigkeit.} Da Teile des Ablaufs nachgebaut
+  wurden, musste gezeigt werden, dass dabei nichts verändert wurde. Dafür wurden
+  beide Wege nebeneinander ausgeführt und ihre Ausgaben verglichen
+  (Tabelle~\ref{tab:gleichwertigkeit}). Verglichen wurden einmal die gebildeten
+  Segmente, Punkt für Punkt, und einmal die erzeugten Schritte bei identischem
+  Zufallsstrom.
+
+  \begin{table}[htbp]
+  \centering
+  \caption{Vergleich der nachgebauten Teile mit dem ursprünglichen Ablauf.}
+  \label{tab:gleichwertigkeit}
+  \begin{tabular}{lll}
+  \toprule
+  Geprüfter Teil & Umfang & Ergebnis \\
+  \midrule
+  Segmentbildung   & 1\,258 Segmente, 47\,143 Schritte & alle identisch \\
+  Schritterzeugung & 1\,808 Schritte, je 10 Alternativen & alle identisch \\
+  \bottomrule
+  \end{tabular}
+  \end{table}
+
+  Beide Vergleiche stimmen vollständig überein. Die Anbindung verändert das
+  Modell also nicht, sie führt es nur in einer anderen Umgebung aus.
+
+  \paragraph{Ergebnis und offener Punkt.} Auswählbar ist eine Kombination aus Bär und Saison. Dazu zeigt die Karte den
+realen Pfad und den Fächer der Alternativen je Schritt. Lässt sich das Modell
+  nicht laden, zeigt die Ebene die reinen GPS-Spuren aus der Datenbank, damit die
+  Karte nutzbar bleibt.
+
+  Offen bleibt die Frage, welche der Alternativen gewählt werden soll. Solange die
+Richtung gleichverteilt gezogen wird, entsteht kein Pfad, der mit dem Verhalten realer Bären
+  vergleichbar wäre.
+
+\subsection{Anbindung der Bildextraktion}
+\label{subsec:anbindung}
+
+Für die Anbindung der Bildextraktion standen zwei Architekturansätze zur Auswahl. Der erste Ansatz verlagert die Auswertung direkt in die Anwendung und fragt das Postfach bei jedem Seitenaufruf ab. Der zweite Ansatz führt die Extraktion als eigenständigen Hintergrundprozess aus und verbindet beide Komponenten über eine gemeinsame Datenbank.
+
+Es wurde der zweite Weg gewählt. Dafür sprechen drei wesentliche Gründe:
+Erstens treffen neue Aufnahmen kontinuierlich ein, unabhängig davon, ob die Benutzeroberfläche geöffnet ist. Eine Auswertung nur beim Seitenaufruf würde Daten erst verspätet erfassen. Zweitens führt Streamlit das Skript bei jeder Benutzerinteraktion neu aus; jeder Klick würde somit einen erneuten Postfachzugriff auslösen. Drittens kann die Auswertung bei vielen Nachrichten mehr Zeit in Anspruch nehmen als der Seitenaufbau, was die Oberfläche blockieren würde. Die getrennte Architektur hält beide Teile im passenden Takt: Die Extraktion arbeitet fortlaufend im Hintergrund, während die Oberfläche lediglich den aktuellen Stand aus der Datenbank ausliest.
+
+Die Extraktion wird in der Seitenleiste der Oberfläche über eine Statusanzeige sichtbar, die neu eingetroffene Aufnahmen meldet. Hierbei wurden zwei Entscheidungen getroffen. Die erste betrifft die Abfragehäufigkeit: Um die Datenbank bei wiederholten Streamlit-Interaktionen nicht unnötig zu belasten, wird die Abfrage für 30~Sekunden zwischengespeichert (Caching). Dieser Wert stellt einen optimalen Kompromiss zwischen hoher Aktualität und geringer Systemlast dar. Die zweite Entscheidung betrifft die Speicherung des Prüfzeitpunkts. Würde dieser nur im flüchtigen Sitzungszustand halten, gälten nach jedem Neustart alle Bilder erneut als neu. Der Zeitpunkt wird daher in einer Statustabelle der Datenbank abgelegt und bleibt somit über Neustarts und Sitzungswechsel hinweg erhalten.
+
+\paragraph{Einschränkung beim Postfachzugriff.} 
+Für den dauerhaften Betrieb sollten verarbeitete Nachrichten im Postfach als gelesen markiert werden, um Mehrfachverarbeitungen zu vermeiden. Die Anwendung bietet hierfür zwei Anmeldewege. Die benutzerbasierte Anmeldung scheitert an einer Richtlinie für bedingten Zugriff der Hochschule, die für dieses Verfahren keine Token ausstellt. Für einen unbeaufsichtigten Hintergrunddienst ist dieser Weg ohnehin ungeeignet, da er eine personelle Interaktion erfordert. Vorgesehen ist daher der zweite Weg über eine anwendungsbasierte Anmeldung. Die erforderliche Berechtigung wurde beantragt und vom Informationssicherheitsbeauftragten genehmigt. Da die Tokenausstellung durch das Rechenzentrum bei Abgabe noch ausstand, weist die Microsoft-Graph-Schnittstelle Anfragen aktuell mit dem Statuscode 403 ab. Die Zuordnung bereits ausgewerteter Nachrichten erfolgt deshalb vorübergehend anwendungsseitig. Sobald die Berechtigung vorliegt, kann die Funktion ohne Codeänderungen genutzt werden.
+
+\subsection{Vereinheitlichung der Datenhaltung}
+\label{sec:datenhaltung}
+
+Vor der Zusammenführung lagen die Kamerabilder an zwei Stellen. Die
+Kartenanwendung hielt in der Tabelle \texttt{image\_metadata} nur Verweise auf
+Dateien im Dateisystem; die Bildextraktion legte ihre Aufnahmen in einer eigenen
+Tabelle als Bilddaten ab. Beide Bestände beschrieben denselben Sachverhalt,
+waren aber unterschiedlich aufgebaut, sodass sich der Bildbestand nicht in einer
+Abfrage auswerten ließ. Hinzu kam, dass Verweise auf Dateien nur auf dem Rechner
+gültig sind, auf dem der Ordner liegt. Für ein System, das an der Hochschule
+weiterbetrieben werden soll, ist das eine Einschränkung.
+
+\paragraph{Entwurf der gemeinsamen Tabelle.} Die neue Tabelle speichert die
+Bilddaten selbst, nicht den Pfad. Damit ist ein Eintrag unabhängig vom
+Dateisystem des jeweiligen Rechners, und beide Zugänge lassen sich gleich
+behandeln: Aufnahmen aus dem E-Mail-Abruf liegen ohnehin nur als Daten vor und
+hätten sonst eigens als Datei abgelegt werden müssen. Der Preis dafür ist eine
+deutlich größere Datenbank, was für den hier vorliegenden Umfang vertretbar ist.
+
+Woher ein Eintrag stammt, hält eine eigene Spalte fest, mit den Werten für
+E-Mail-Abruf und Dateisystem. Die Herkunft bleibt damit erhalten, ohne dass der
+Bestand dafür auf zwei Tabellen aufgeteilt werden muss. Der Zeitstempel wird als
+Datums- und Zeitwert geführt und nicht mehr als Zeichenkette, sodass sich
+Zeiträume in der Abfrage selbst eingrenzen lassen. Indizes bestehen auf den
+Spalten, nach denen die Oberfläche filtert: Gerät, Bildtyp, Herkunft und
+Zeitpunkt.
+
+\paragraph{Überführung der Bestände.} Die Überführung lief in einem eigenen
+Schritt und las beide Quellen nacheinander ein: die Ordner im Dateisystem und
+die Tabelle der Bildextraktion. Ein Eintrag ist über Gerät, Dateiname und
+Herkunft eindeutig; diese Kombination ist in der Tabelle als eindeutiger
+Schlüssel hinterlegt. Zusammen mit einem Einfügen, das vorhandene Einträge
+überspringt, lässt sich die Überführung beliebig oft wiederholen, ohne dass
+Dubletten entstehen. Das war nötig, weil die Bildextraktion während der
+Bearbeitung weiterlief und laufend neue Aufnahmen hinzukamen.
+
+Die beiden alten Tabellen wurden nicht gelöscht. So blieb der Ausgangszustand
+zum Vergleich erhalten, und ein Rückschritt wäre jederzeit möglich gewesen.
+
+\paragraph{Ergebnis.} Alle Zugriffe der Anwendung auf Bilder richten sich gegen
+diese eine Tabelle, sowohl die Anzeige der Bilder zu einem Gerät als auch die
+Zählung je Gerät für die Karte. Damit ist Anforderung~N7 erfüllt: Der
+Bildbestand ist über eine einzige Abfrage erreichbar, unabhängig davon, welches
+Teilsystem einen Eintrag angelegt hat.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  font=\footnotesize,
+  tab/.style={draw, inner sep=0pt},
+  neu/.style={draw, line width=1pt, inner sep=0pt},
+  pfeil/.style={-{Latex[length=2mm]}, line width=0.7pt},
+  notiz/.style={font=\scriptsize\itshape, align=left}
+]
+
+\newcommand{\tabelle}[2]{%
+  \begin{minipage}{42mm}
+  \vspace{1.3mm}
+  \centering\texttt{#1}\\[1mm]
+  \hrule
+  \vspace{1.3mm}
+  \hspace*{2.5mm}\begin{minipage}{37mm}#2\end{minipage}
+  \vspace{1.3mm}
+  \end{minipage}}
+
+\newcommand{\tabelleB}[2]{%
+  \begin{minipage}{48mm}
+  \vspace{1.3mm}
+  \centering\texttt{#1}\\[1mm]
+  \hrule
+  \vspace{1.3mm}
+  \hspace*{2.5mm}\begin{minipage}{43mm}#2\end{minipage}
+  \vspace{1.3mm}
+  \end{minipage}}
+
+\node[tab] (t1) at (0,0) {\tabelle{image\_metadata}{%
+  device\_id\\ filename\\ \textbf{image\_path} \textit{(Verweis)}\\ image\_type\\
+  timestamp \textit{(Text)}\\ parsed\_successfully}};
+
+\node[tab] (t2) at (0,-4.3) {\tabelle{wildlife\_images}{%
+  device\_id\\ filename\\ \textbf{image\_bytes} \textit{(Bilddaten)}\\ image\_type\\
+  timestamp \textit{(Text)}\\ parsed\_successfully}};
+
+\node[neu] (t3) at (9.0,-2.15) {\tabelleB{bears\_images\_unified}{%
+  device\_id\\ filename\\ \textbf{image\_bytes} \textit{(Bilddaten)}\\ image\_type\\
+  \textbf{source} \textit{(Herkunft)}\\
+  \textbf{timestamp} \textit{(Datumswert)}\\ parsed\_successfully}};
+
+\draw[pfeil] (t1.east) -- (t3.west);
+\draw[pfeil] (t2.east) -- (t3.west);
+
+\node[notiz, anchor=north west] at ($(t3.south west)+(0,-0.3)$)
+  {eindeutig über \texttt{(device\_id, filename, source)}\\
+   Indizes auf Gerät, Bildtyp, Herkunft und Zeitpunkt};
+
+\node[notiz, anchor=north west] at ($(t2.south west)+(0,-0.3)$)
+  {bleiben als Ausgangszustand erhalten};
+
+\end{tikzpicture}
+\caption{Zusammenführung der beiden Bildtabellen. Hervorgehoben sind die
+Spalten, in denen sich die Bestände unterschieden oder die neu hinzugekommen
+sind.}
+\label{fig:datenhaltung}
+\end{figure}
+
+
+
+\section{Bewegungsanimation}
+\label{sec:animation}
+
+\subsection{Synchronisierte Darstellung echter und simulierter Bewegung}
+\label{subsec:synchron}
+
+Eine Trajektorie als fertige Linie auf der Karte zeigt, \emph{wo} ein Tier war, aber nicht,
+\emph{wann} es dort war und wie schnell es sich bewegt hat. Für die Beurteilung des
+Bewegungsmodells ist gerade das entscheidend, denn das Modell erzeugt Schritte je Zeitpunkt.
+Die Animationskomponente macht den zeitlichen Verlauf deshalb abspielbar.
+
+\paragraph{Die Forderung nach Synchronität.} Entscheidend ist dabei nicht die Animation an
+sich, sondern dass die simulierte Bewegung sich auf \emph{dieselbe} Grundlage bezieht wie die
+reale: dasselbe Tier, denselben Tag und dieselben Zeitpunkte. Wären beide getrennt
+auswählbar, ließen sich unversehens zwei inhaltlich unverbundene Datensätze nebeneinander
+stellen, und der Vergleich wäre wertlos.
+
+Die Synchronität wird deshalb nicht der Bedienung überlassen, sondern im Aufbau erzwungen:
+Die Kandidatenschritte werden aus den realen Punkten desselben Tages erzeugt, und jeder
+simulierte Punkt übernimmt den Zeitstempel des realen Schritts, zu dem er gehört. Beide
+Darstellungen laufen damit zwangsläufig über dieselbe Zeitachse.
+
+\paragraph{Zwei Formen der Simulation.} Die Komponente zeigt die Modellausgabe in zwei
+Formen, die unterschiedliche Fragen beantworten und gleichzeitig sichtbar sein können.
+
+\begin{wrapfigure}{r}{0.48\textwidth}
+    \centering
+    \includegraphics[width=0.46\textwidth]{Fächer.png}
+    \caption{Der Fächer als Möglichkeitsraum.}
+    \label{fig:faecher}
+\end{wrapfigure}
+
+Der \emph{Fächer} zeigt an jedem realen Schritt sämtliche Kandidaten, die das Modell dort
+erzeugt hat (siehe Abbildung~\ref{fig:faecher}). Er ist kein Pfad, sondern der Möglichkeitsraum eines \emph{einzelnen} Schritts.
+
+Die \emph{Realisierungen} sind durchgehende Pfade: Je Schritt wird ein Kandidat gezogen und
+auf die aktuelle simulierte Position angewendet, nicht auf die reale. Nur so entsteht ein
+fortlaufender Weg und nicht wieder ein Fächer. Dies ergibt den zweiten Bären, der neben dem
+realen herläuft.
+
+\paragraph{Warum mehrere Pfade gleichzeitig.} Standardmäßig werden mehrere Realisierungen
+gezeichnet. Das ist eine bewusste Entscheidung gegen eine naheliegende, aber irreführende
+Darstellung: Eine einzelne Linie neben der realen Route würde unweigerlich als
+\enquote{das Modell sagt diesen Weg voraus} gelesen. 
+
+\begin{wrapfigure}{r}{0.48\textwidth}
+    \centering
+    \includegraphics[width=0.46\textwidth]{mehrereSimuliertePfade.png}
+    \caption{Mehrere simulierte Realisierungen zur Streuung.}
+    \label{fig:mehrere_pfade}
+\end{wrapfigure}
+
+Ein Modellpfad ist jedoch eine
+Zufallsziehung; ein erneuter Lauf ergibt einen anderen Weg. Mehrere auseinanderlaufende
+Linien vermitteln diesen Charakter unmittelbar (vgl. Abbildung~\ref{fig:mehrere_pfade}), und aussagekräftig ist ihre Streuung, nicht
+die einzelne Linie. Ein Hinweis in der Oberfläche benennt das zusätzlich ausdrücklich.
+
+\paragraph{Gewichtete Auswahl statt Gleichverteilung.} Innerhalb eines Schritts sind die
+Kandidatenrichtungen gleichverteilt, wie Abschnitt~\ref{subsec:simulationsmodell} für die
+Vorarbeit dargelegt hat. Würde unter ihnen ebenfalls gleichverteilt gezogen, entstünde ein
+Pfad ohne jeden Bezug zum Drehverhalten realer Tiere. Die Kandidaten werden deshalb nach der
+in Abschnitt~\ref{subsec:bewegungsoekologie} beschriebenen von-Mises-Verteilung der
+Drehwinkel gewichtet. Woher der Konzentrationsparameter stammt, beschreibt
+Abschnitt~\ref{subsec:richtungstreue}.
+
+Der reale Schritt bleibt dabei bewusst Teil der Kandidatenmenge. In der Begriffswelt der
+Step-Selection-Funktionen ist er der \emph{genutzte} Schritt unter den \emph{verfügbaren};
+ihn auszuschließen würde die Simulation künstlich von der Realität wegdrücken.
+
+\paragraph{Angaben während des Abspielens.} Die Komponente zeigt fortlaufend die
+zurückgelegte Strecke, die momentane Geschwindigkeit und den mittleren Abstand zwischen dem
+realen und den simulierten Bären. 
+
+\begin{wrapfigure}{r}{0.48\textwidth}
+    \centering
+    \includegraphics[width=0.46\textwidth]{AnimationsDashboard.png}
+    \caption{Animations-Dashboard mit Live-Metriken.}
+    \label{fig:animations_dashboard}
+\end{wrapfigure}
+
+Die letzte Angabe übersetzt den visuellen Vergleich in eine
+ablesbare Zahl (vergleiche die Live-Metriken in Abbildung~\ref{fig:animations_dashboard}). Sie wächst im Verlauf eines Tages systematisch an, und das ist kein Mangel:
+Die Simulation wird zu keinem Zeitpunkt auf die reale Route zurückgeholt, sodass sich
+Abweichungen zwangsläufig aufsummieren.
+
+Die Animation ist nicht Teil der Hauptkarte, sondern eine eigene Seite mit einer eigenen
+Kartenkomponente. Dafür sprechen drei Gründe.
+
+Erstens unterscheidet sich der Datenumfang grundlegend. Die Hauptkarte zeigt Übersichten
+über Jahre hinweg und muss die Punktzahl dafür ausdünnen. Die Animation zeigt einen einzelnen
+Tag, diesen aber in voller Auflösung und ohne Ausdünnung, weil jede Ortung einen Zeitpunkt
+der Bewegung markiert. Beides in einer Komponente zu vereinen hieße, für jede Ansicht den
+jeweils falschen Kompromiss zu schließen.
+
+Zweitens unterscheidet sich die Bedienung. Die Animation benötigt eine Zeitleiste,
+Abspielsteuerung, Geschwindigkeitsstufen und eine Auswahl des Zeitfensters. Diese Elemente
+auf der Hauptkarte unterzubringen würde deren Bedienoberfläche überfrachten, ohne den
+übrigen Datenebenen zu nützen.
+
+Drittens unterscheidet sich die Blickrichtung. Auf der Hauptkarte liegen mehrere Bestände
+übereinander und werden räumlich verglichen; dafür ist die senkrechte Draufsicht geeignet.
+Bei einem einzelnen Bewegungsverlauf ist das Gelände dagegen Teil der Fragestellung, weil
+sich erst daran beurteilen lässt, ob ein Pfad einem Tal folgt oder einen Hang quert. Die
+Animationsseite ist deshalb auf das Luftbild mit zuschaltbarer Geländedarstellung ausgelegt.
+
+Geteilt werden dennoch die tragenden Bausteine: dieselbe Kartenbibliothek, dieselben
+Luftbild- und Höhenquellen, dasselbe Verhalten bei nicht erreichbaren Höhendaten und dieselbe
+Tabellendarstellung der zugrunde liegenden Werte unterhalb der Karte. Die Seite zeigt
+außerdem an, ob die Daten aus der Projektdatenbank oder aus der lokalen Rückfallebene
+stammen - eine Angabe, die für die Nachvollziehbarkeit einer Auswertung wesentlich ist.
+
+```latex
+\section{Übertragung des Bewegungsmodells auf die japanischen Kameradaten}
+\label{sec:uebertragung}
+
+Das in den vorhergehenden Abschnitten beschriebene Bewegungsmodell basiert auf
+Trajektoriendaten aus den rumänischen Karpaten. Für das japanische
+Untersuchungsgebiet liegt dagegen keine vergleichbare Menge kontinuierlicher
+Bewegungstrajektorien vor. Als Beobachtungsgrundlage stehen dort ausschließlich
+punktuelle Detektionen an Kamerastandorten zur Verfügung. Eine direkte Übertragung
+der ursprünglichen Modellparameter ist daher nicht ausreichend, da insbesondere
+die räumlichen Eigenschaften des Untersuchungsgebiets sowie die Art der verfügbaren
+Beobachtungen voneinander abweichen.
+
+Die Übertragung verfolgt deshalb einen modularen Ansatz. Die aus den Karpaten
+abgeleiteten Bewegungscharakteristika werden als Grundlage für die Erzeugung
+möglicher Schritte verwendet. Die Auswahl zwischen diesen Kandidatenschritten wird
+um eine probabilistische Bewertungsfunktion erweitert. Zusätzlich werden
+Richtungstreue und Schrittlänge empirisch aus den vorhandenen Trajektoriendaten
+abgeleitet. Für das japanische Untersuchungsgebiet wird die Bewegungsbewertung
+außerdem um räumliche Informationen aus OpenStreetMap ergänzt. Dadurch werden sowohl
+die intrinsischen Bewegungseigenschaften der Tiere als auch die Eigenschaften der
+umgebenden Landschaft berücksichtigt.
+
+\subsection{Probabilistische Auswahl der Kandidatenschritte}
+\label{subsec:neuimplementierung}
+
+Das ursprüngliche Bewegungsmodell erzeugt für jeden Zeitschritt eine Menge möglicher
+Kandidatenschritte. Für die Konstruktion einer vollständigen simulierten Trajektorie
+ist zusätzlich eine Regel erforderlich, nach der aus dieser Menge ein konkreter
+Schritt ausgewählt wird. Diese Auswahl wird für die Übertragung als probabilistische
+Step-Selection-Funktion formuliert.
+
+Für einen Kandidatenschritt $i$ wird zunächst eine Bewertung $s_i$ bestimmt. Sie
+beschreibt, wie geeignet der Kandidat unter Berücksichtigung der aktuell
+verwendeten Bewegungs- und Geländemerkmale ist. Die Auswahlwahrscheinlichkeit ergibt
+sich anschließend aus
+
+\begin{equation}
+P_i =
+\frac{\exp(\beta s_i)}
+{\sum_{j=1}^{n}\exp(\beta s_j)},
+\label{eq:step_selection}
+\end{equation}
+
+wobei $n$ die Anzahl der verfügbaren Kandidatenschritte und $\beta$ einen
+Skalierungsparameter der Bewertungsfunktion bezeichnet.
+
+Die exponentielle Form bewirkt, dass auch Kandidaten mit einer geringeren Bewertung
+eine von null verschiedene Auswahlwahrscheinlichkeit besitzen. Gleichzeitig werden
+größere Unterschiede zwischen den Bewertungen durch die Exponentialfunktion
+verstärkt. Im Gegensatz zu einer deterministischen Auswahl des jeweils am höchsten
+bewerteten Kandidaten bleibt damit der stochastische Charakter der Bewegung erhalten.
+
+Die Bewertung kann aus mehreren Komponenten zusammengesetzt werden. Für die
+vorliegende Übertragung werden insbesondere die Abweichung von der bisherigen
+Bewegungsrichtung sowie die räumliche Eignung des zurückzulegenden Weges
+berücksichtigt. Die einzelnen Beiträge können unabhängig voneinander aktiviert
+werden. Dadurch lässt sich zwischen einer ausschließlich bewegungsbasierten und
+einer zusätzlich geländebasierten Simulation unterscheiden.
+
+Die Kandidatenrichtungen werden geschichtet erzeugt. Der Vollkreis wird hierzu in
+acht Sektoren mit einer Breite von jeweils $45^\circ$ unterteilt. Aus jedem Sektor
+wird genau eine Richtung zufällig bestimmt. Die Streuung innerhalb eines Sektors
+beträgt $\pm22{,}5^\circ$. Auf diese Weise wird der gesamte Winkelbereich abgedeckt,
+während gleichzeitig vermieden wird, dass mehrere Kandidaten zufällig in einem
+kleinen Winkelbereich konzentriert sind.
+
+Die Auswahlwahrscheinlichkeit eines Kandidaten wird damit nicht allein durch seine
+Richtung bestimmt. Vielmehr entsteht für jeden Zeitschritt ein diskreter
+Möglichkeitsraum, in dem die verschiedenen Kandidaten anhand ihrer Eigenschaften
+unterschiedlich wahrscheinlich ausgewählt werden.
+
+\subsection{Empirische Modellierung der Richtungstreue}
+\label{subsec:richtungstreue}
+
+Ein wesentliches Merkmal tierischer Bewegungen ist die Abhängigkeit der aktuellen
+Bewegungsrichtung von der Richtung des unmittelbar vorausgegangenen Schrittes.
+Diese Richtungstreue wird im Modell über eine von-Mises-Verteilung beschrieben.
+Der zugehörige Konzentrationsparameter $\kappa$ bestimmt dabei, wie stark die
+Auswahl auf bestimmte Richtungsänderungen konzentriert ist.
+
+Anstatt $\kappa$ als festen Wert vorzugeben, wird die Richtungstreue aus den
+Karpaten-Trajektorien empirisch abgeleitet. Grundlage sind 46\,161 Paare
+aufeinanderfolgender Schritte von 13 Individuen. Für jedes Schrittpaar wird der
+Drehwinkel $\Delta\theta$ zwischen den beiden Bewegungsrichtungen bestimmt und
+anschließend dessen Kosinus betrachtet. Als Maß für die mittlere Richtungstreue
+ergibt sich
+
+\begin{equation}
+\rho =
+\frac{1}{n}
+\sum_{i=1}^{n}
+\cos(\Delta\theta_i).
+\label{eq:rho_empirical}
+\end{equation}
+
+Ein Wert von $\rho=1$ entspricht dabei einer vollständigen Beibehaltung der
+Bewegungsrichtung, während $\rho=0$ keine gerichtete Abhängigkeit beschreibt.
+Negative Werte weisen auf eine Tendenz zu einer Richtungsumkehr hin.
+
+Die Auswertung zeigt, dass die Richtungstreue deutlich von der Schrittlänge
+abhängt. Die entsprechenden Werte sind in Tabelle~\ref{tab:richtungstreue}
+zusammengefasst.
+
+\begin{table}[htbp]
+\centering
+\caption{Empirische Richtungstreue der Karpatenbären in Abhängigkeit von der
+Schrittlänge}
+\label{tab:richtungstreue}
+\small
+\begin{tabular}{l r r r}
+\toprule
+\textbf{Schrittlänge} &
+\textbf{Anzahl} &
+\textbf{mittlerer Kosinus} &
+\textbf{Median des Drehwinkels} \\
+\midrule
+unter 25\,m      & 24.058 & $-0{,}202$ & $114^\circ$ \\
+25 bis 50\,m     &  5.876 & $-0{,}122$ & $106^\circ$ \\
+50 bis 100\,m    &  4.545 & $+0{,}106$ & $75^\circ$ \\
+100 bis 200\,m   &  4.529 & $+0{,}251$ & $62^\circ$ \\
+200 bis 500\,m   &  4.634 & $+0{,}414$ & $47^\circ$ \\
+über 500\,m      &  2.519 & $+0{,}588$ & $36^\circ$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Über alle Schritte ergibt sich ein Mittelwert von $\rho=-0{,}012$. Dieser
+aggregierte Wert würde zunächst auf eine nahezu richtungsunabhängige Bewegung
+hindeuten. Die Aufteilung nach Schrittlänge zeigt jedoch einen systematischen
+Zusammenhang: Bei kurzen Schritten treten überwiegend große Richtungsänderungen
+auf, während längere Schritte eine deutlich stärkere Beibehaltung der bisherigen
+Richtung aufweisen.
+
+Eine über alle Schrittlängen konstante Richtungstreue würde diese unterschiedlichen
+Bewegungszustände nur unzureichend abbilden. Daher wird $\rho$ in der Simulation
+abhängig von der erwarteten Schrittlänge bestimmt. Zwischen den empirischen
+Stützstellen wird auf logarithmischer Schrittlängenachse interpoliert. Außerhalb
+des empirisch erfassten Bereichs wird der jeweils nächstgelegene Randwert
+verwendet, sodass keine Extrapolation erforderlich ist.
+
+Der Zusammenhang zwischen der mittleren Richtungstreue $\rho$ und dem
+Konzentrationsparameter $\kappa$ der von-Mises-Verteilung wird über
+
+\begin{equation}
+\rho = A(\kappa)
+=
+\frac{I_1(\kappa)}{I_0(\kappa)}
+\label{eq:rho}
+\end{equation}
+
+beschrieben. Dabei bezeichnen $I_0$ und $I_1$ modifizierte Besselfunktionen
+erster Art. Für die Simulation wird dieser Zusammenhang invertiert, um aus dem
+empirisch bestimmten $\rho$ den entsprechenden Wert von $\kappa$ zu erhalten.
+Hierzu wird die Näherung nach Fisher verwendet.
+
+Die Richtungsbewertung eines Kandidaten ergibt sich damit aus
+
+\begin{equation}
+w_{\mathrm{dir}}
+=
+\exp\left(
+\kappa \cos(\Delta\theta)
+\right).
+\label{eq:direction_weight}
+\end{equation}
+
+Bei positivem $\kappa$ werden Richtungen bevorzugt, die der bisherigen
+Bewegungsrichtung entsprechen. Ein negatives $\kappa$ führt dagegen zu einer
+Bevorzugung größerer Richtungsänderungen und kann somit das bei kurzen Schritten
+beobachtete Hin-und-Her-Verhalten abbilden.
+
+Die empirische Kalibrierung ist allerdings mit einer Unsicherheit behaftet. Der
+Median der betrachteten Schrittlängen beträgt 22{,}7\,m und liegt damit in einer
+Größenordnung, in der sich die Positionsungenauigkeit der GPS-Daten auf die
+berechneten Richtungsänderungen auswirken kann. Insbesondere die negativen Werte
+bei kurzen Schritten sind daher nicht ausschließlich als tatsächliches
+Bewegungsverhalten zu interpretieren. Dieser Aspekt wird bei der Bewertung des
+Modells in Abschnitt~\ref{sec:limitationen} berücksichtigt.
+
+\subsection{Geländebasierte Bewertung der Kandidatenschritte}
+\label{subsec:gelaende}
+
+Die bewegungsbasierte Auswahl berücksichtigt die bisherige Bewegungsrichtung,
+enthält jedoch zunächst keine Information über die räumliche Umgebung. Für die
+Übertragung auf das japanische Untersuchungsgebiet wird deshalb eine
+geländebasierte Bewertung ergänzt.
+
+Die Grundlage hierfür bilden OpenStreetMap-Daten, die für das Untersuchungsgebiet
+in ein regelmäßiges Raster überführt werden. Jeder Rasterzelle wird anhand ihrer
+Geländemerkmale eine Attraktivitätsbewertung zugeordnet. Potenziell geeignete
+Lebensräume, beispielsweise Wald, Gebüsch oder Schutzgebiete, tragen positiv zur
+Bewertung bei. Anthropogene Nutzungsformen sowie bestimmte Verkehrswege werden
+dagegen negativ bewertet. Straßen werden dabei entsprechend ihrer
+Klassifizierung unterschiedlich berücksichtigt.
+
+Für die Bewertung werden nicht ausschließlich die Werte einzelner
+OpenStreetMap-Tags betrachtet. Entscheidend ist vielmehr die Kombination aus
+Schlüssel und Wert eines Merkmals. Dies ist insbesondere bei Merkmalen wie
+\texttt{residential} relevant, da ein Wohngebiet und eine als
+\texttt{highway=residential} klassifizierte Wohnstraße unterschiedliche
+räumliche Bedeutungen besitzen.
+
+Die Geländebewertung eines Kandidatenschrittes wird nicht ausschließlich am
+Endpunkt bestimmt. Stattdessen werden mehrere Positionen entlang des möglichen
+Weges betrachtet. Dadurch fließen auch Geländeeigenschaften zwischen Ausgangs-
+und Zielpunkt in die Bewertung ein.
+
+Diese Vorgehensweise ist insbesondere aufgrund des Verhältnisses zwischen
+Schrittlänge und Rasterauflösung relevant. Die typischen Bewegungsschritte sind
+teilweise kürzer als die verwendete Rasterweite von ungefähr 150\,m. Eine
+ausschließliche Bewertung des Endpunkts würde deshalb bei mehreren Kandidaten
+häufig auf dieselbe Rasterzelle führen und den Einfluss des Geländes reduzieren.
+
+Die Bewertung entlang des Weges berücksichtigt außerdem mögliche Hindernisse
+zwischen dem aktuellen Standort und einem attraktiven Zielgebiet. Ein attraktives
+Waldgebiet hinter einer Siedlung soll beispielsweise nicht automatisch zu einer
+Bevorzugung der direkten Richtung führen, wenn der Weg dorthin durch eine
+ungünstig bewertete Fläche verläuft.
+
+\subsection{Lokale Bereitstellung der Geländedaten}
+\label{subsec:terrain_cache}
+
+Die für die Geländebewertung benötigten OpenStreetMap-Merkmale werden über die
+Overpass-Schnittstelle bezogen. Eine Abfrage für jeden Kandidatenschritt würde
+jedoch zu einer großen Anzahl einzelner Netzwerkanfragen führen und die
+Simulation von der Verfügbarkeit und Antwortzeit eines externen Dienstes
+abhängig machen.
+
+Daher wird das Untersuchungsgebiet vor der Simulation vollständig abgefragt und
+lokal als Raster vorgehalten. Während eines Simulationslaufs werden die
+Geländebewertungen innerhalb dieses vorbereiteten Gebiets ausschließlich aus
+dem lokalen Datenspeicher gelesen. Die eigentliche Bewegungssimulation ist damit
+von der externen Datenbeschaffung entkoppelt.
+
+Diese Trennung besitzt neben der Laufzeiteffizienz auch eine methodische
+Bedeutung. Die Eingangsdaten der Simulation bleiben während eines Laufs konstant
+und können für wiederholte Experimente erneut verwendet werden. Dadurch wird
+vermieden, dass unterschiedliche Ergebnisse allein durch zeitlich veränderte
+Antworten des externen Kartendienstes entstehen.
+
+Für Positionen außerhalb des vorbereiteten Gebiets ist in der Implementierung
+eine externe Abfrage als Rückfallebene vorgesehen. Für die eigentliche
+quantitative Auswertung muss jedoch sichergestellt werden, dass das vorbereitete
+Gebiet sämtliche während der Simulation erreichbaren Positionen umfasst. Andernfalls
+kann ein Wechsel zwischen lokaler und externer Datenquelle zu unterschiedlichen
+Geländegrundlagen innerhalb eines Simulationslaufs führen.
+
+\subsection{Clusterbasierte Richtungswahl}
+\label{subsec:cluster}
+
+Die lokale Geländebewertung beschreibt die Eigenschaften einzelner Kandidatenwege.
+Zusätzlich soll berücksichtigt werden können, ob sich in einer bestimmten Richtung
+ein größeres zusammenhängendes Gebiet geeigneten Habitats befindet. Hierzu wird
+das Prinzip der gewichteten Schwerpunktbildung aus Abschnitt~\ref{subsec:schwerpunkt}
+auf das Geländeraster übertragen.
+
+Die zugrunde liegende Berechnung basiert auf
+
+\begin{equation}
+P =
+\frac{\sum_i w_i p_i}
+{\sum_i w_i},
+\label{eq:schwerpunkt}
+\end{equation}
+
+wobei $p_i$ die Position einer Rasterzelle und $w_i$ deren Gewicht bezeichnet.
+Der berechnete Punkt stellt den gewichteten räumlichen Schwerpunkt der
+berücksichtigten Zellen dar.
+
+Vor der Schwerpunktbildung werden die attraktiven Rasterzellen räumlich getrennt.
+Hierzu werden Zellen oberhalb einer definierten Attraktivitätsschwelle anhand
+ihrer räumlichen Nachbarschaft zu zusammenhängenden Gebieten gruppiert. Die
+Implementierung verwendet hierfür eine Zusammenhangskomponentensuche mit
+8er-Nachbarschaft.
+
+Diese Vorgehensweise stellt eine Anpassung an die Struktur der verfügbaren
+Geländedaten dar. Die zugrunde liegende Methode aus der Referenz verwendet für
+die Trennung der relevanten Bereiche einen gelernten Merkmalsraum. Ein solcher
+Merkmalsraum liegt für das hier verwendete regelmäßige Geländeraster nicht vor.
+Die räumliche Nachbarschaft der Rasterzellen ist hingegen unmittelbar gegeben,
+sodass die Zusammenhangskomponentensuche die räumliche Trennung direkt auf dem
+Raster durchführen kann.
+
+Übertragen wird somit das Prinzip, zunächst getrennte Bereiche zu identifizieren
+und anschließend innerhalb dieser Bereiche einen gewichteten Schwerpunkt zu
+bestimmen. Die konkrete Methode der Gebietsbildung wird dagegen an die
+Struktur der vorliegenden Daten angepasst.
+
+\paragraph{Positive Gewichte für die Schwerpunktbildung.}
+
+Die Geländebewertungen enthalten sowohl positive als auch negative Beiträge.
+Eine direkte Verwendung dieser Bewertungen als Gewichte in
+Gleichung~\eqref{eq:schwerpunkt} wäre deshalb nicht sinnvoll, da sich positive
+und negative Beiträge gegenseitig aufheben könnten. Insbesondere könnte der
+Nenner der Gleichung gegen null gehen und dadurch zu instabilen
+Schwerpunktpositionen führen.
+
+Für die Schwerpunktbildung werden deshalb ausschließlich Rasterzellen
+oberhalb der Attraktivitätsschwelle berücksichtigt. Ihr Gewicht wird relativ
+zu dieser Schwelle bestimmt:
+
+\begin{equation}
+w_i =
+s_i-s_{\mathrm{threshold}}+0{,}5.
+\label{eq:cluster_weight}
+\end{equation}
+
+Damit bleiben die verwendeten Gewichte positiv. Die negativen Geländebeiträge
+werden weiterhin bei der Bewertung einzelner Kandidatenschritte berücksichtigt,
+gehen jedoch nicht als negative Masse in die Schwerpunktbildung ein.
+
+Für jedes zusammenhängende Gebiet wird anschließend der gewichtete Schwerpunkt
+bestimmt. Die Richtung vom aktuellen Simulationsstandort zu diesem Schwerpunkt
+wird als zusätzlicher Kandidat in die Schrittauswahl aufgenommen.
+
+\paragraph{Berücksichtigung der räumlichen Masse.}
+
+Die Richtung zu einem zusammenhängenden Gebiet stellt zunächst lediglich einen
+zusätzlichen Kandidaten dar. Damit die Information über die Größe und
+Attraktivität des Gebiets tatsächlich in die Auswahl eingeht, wird die
+Richtung zusätzlich anhand der Masse des jeweiligen Gebiets gewichtet.
+
+Der hierfür verwendete Bonus steigt mit der Clustergröße beziehungsweise
+Clusterbewertung und wird durch eine Tangens-hyperbolicus-Funktion begrenzt.
+Damit kann ein größeres attraktives Gebiet die Wahrscheinlichkeit seiner
+Richtung erhöhen, ohne die übrigen Kandidaten vollständig aus dem
+Auswahlprozess zu verdrängen.
+
+Die freien Kandidatenrichtungen bleiben gleichzeitig Bestandteil der
+Kandidatenmenge. Dadurch wird vermieden, dass sich die Simulation ausschließlich
+auf die identifizierten Habitatgebiete beschränkt. Die Bewegungsentscheidung
+bleibt somit eine Kombination aus lokaler Bewegungsdynamik, Geländequalität und
+räumlich aggregierter Habitatinformation.
+
+\subsection{Zusammenführung der Modellkomponenten}
+\label{subsec:integration_uebertragung}
+
+Die übertragene Bewegungslogik verbindet die beschriebenen Komponenten zu einer
+gemeinsamen probabilistischen Schrittauswahl. Für jeden Simulationsschritt wird
+zunächst anhand des jeweiligen Zeitintervalls die erwartete Schrittlänge
+bestimmt. Auf dieser Grundlage werden Kandidatenschritte mit unterschiedlichen
+Richtungen erzeugt.
+
+Die Richtungsbewertung berücksichtigt anschließend die Abweichung von der
+bisherigen Bewegungsrichtung. Der hierfür verwendete Konzentrationsparameter
+$\kappa$ wird aus der empirisch beobachteten Richtungstreue und der erwarteten
+Schrittlänge bestimmt. Sofern Geländedaten verfügbar sind, wird zusätzlich die
+Geländequalität entlang des Kandidatenschrittes bewertet.
+
+Werden in der Umgebung zusammenhängende attraktive Gebiete identifiziert, werden
+deren gewichtete Schwerpunkte als zusätzliche Richtungsalternativen in die
+Kandidatenmenge aufgenommen. Ihre räumliche Masse beeinflusst die Bewertung über
+den begrenzten Clusterbonus.
+
+Die resultierende Gesamtbewertung $s_i$ eines Kandidaten wird schließlich über
+Gleichung~\eqref{eq:step_selection} in eine Auswahlwahrscheinlichkeit überführt.
+Die Bewegung des simulierten Individuums ergibt sich somit aus einer zufälligen
+Ziehung innerhalb eines durch Bewegungsrichtung, Schrittlänge und
+Geländeeigenschaften eingeschränkten Möglichkeitsraums.
+
+Ein wesentlicher Bestandteil der Übertragung ist dabei die Trennung zwischen
+empirisch abgeleiteten und modellseitig eingeführten Komponenten. Die
+Richtungstreue wird aus den vorhandenen Karpaten-Trajektorien bestimmt, während
+die Geländegewichtung und die clusterbasierte Richtungswahl aus den Eigenschaften
+des japanischen Untersuchungsgebiets abgeleitet werden. Damit wird nicht
+behauptet, dass die japanischen Kameradaten selbst die zugrunde liegenden
+Bewegungsparameter liefern. Vielmehr wird ein aus den verfügbaren
+Trajektoriendaten abgeleitetes Bewegungsmodell unter Verwendung der im
+japanischen Untersuchungsgebiet verfügbaren räumlichen Informationen
+angewendet.
+
+Die resultierenden simulierten Trajektorien bilden anschließend die Grundlage
+für die zeitliche Gegenüberstellung mit den realen Kameradetektionen. Da aus
+den punktuellen Kameradetektionen keine vollständigen realen Trajektorien
+rekonstruiert werden können, erfolgt die eigentliche quantitative Bewertung
+nicht über einen direkten räumlichen Trajektorienvergleich, sondern über die
+in Abschnitt~\ref{sec:tagesrhythmus} beschriebene zeitliche Analyse.
+```
+
+\section{Statistischer Tagesrhythmus-Vergleich}
+\label{sec:tagesrhythmus}
+
+Der vorangegangene Abschnitt hat das Bewegungsmodell auf die japanische Landschaft
+übertragen. Offen bleibt, wie sich das Ergebnis überhaupt prüfen lässt. Ein räumlicher
+Pfadvergleich scheidet aus, denn aus punktuellen Kameradetektionen lässt sich keine
+Trajektorie rekonstruieren (Abschnitt~\ref{subsec:kamerafallen}). Der Vergleich wird deshalb
+auf die zeitliche Ebene verlagert: Simulierte und reale Daten besitzen beide eine
+Tageszeitverteilung, und diese lassen sich gegenüberstellen.
+
+\subsection{Zirkuläre Kerndichteschätzung und Überlappungskoeffizient}
+\label{subsec:kde-umsetzung}
+
+\paragraph{Reale Auslösezeiten.} Die realen Zeitpunkte stammen aus der vereinheitlichten
+Bildtabelle. Ausgeschlossen werden Aufnahmen zweier Gerätekennungen, die dem Muster der
+übrigen sechsstelligen Kennungen nicht folgen und mit hoher Wahrscheinlichkeit aus einer
+fehlgeschlagenen Kennungserkennung beim E-Mail-Abruf stammen. Die verbleibenden Zeitstempel
+werden in Dezimalstunden umgerechnet.
+
+\paragraph{Zusammenfassung über alle Kameras.} Die Auswertung erfolgt über alle Kameras
+gemeinsam und nicht je Kamera. Das ist eine Notwendigkeit, keine Vereinfachung: Die realen
+Daten umfassen nur wenige Dutzend verwertbare Zeitstempel, verteilt auf rund ein bis zwei
+Dutzend Kameras. Für eine Verteilung \emph{je Kamera} ist das bei weitem zu wenig.
+Zusammengefasst reicht die Stichprobe für eine Kerndichteschätzung, die aber weiterhin mit
+Vorsicht zu lesen ist; Abschnitt~\ref{sec:limitationen} ordnet das ein.
+
+\paragraph{Umsetzung der zirkulären Schätzung.} Umgesetzt ist die in
+Abschnitt~\ref{subsec:kamerafallen} beschriebene Kerndichteschätzung auf dem 24-Stunden-Kreis.
+Der Ringschluss wird dadurch erreicht, dass die Beobachtungen zusätzlich um $-24$ und $+24$
+Stunden versetzt in die Schätzung eingehen. Damit liegen 23:30~Uhr und 00:30~Uhr korrekt
+nahe beieinander und nicht an entgegengesetzten Enden einer Geraden.
+
+Beide Dichten werden auf einem gemeinsamen Gitter von 481~Stützstellen über 24~Stunden
+ausgewertet und so normiert, dass ihr Integral eins ergibt. Der Überlappungskoeffizient nach
+Gleichung~\eqref{eq:delta} wird anschließend als Summe der punktweisen Minima über dieses
+Gitter genähert.
+
+\paragraph{Abgrenzung zur Referenzumsetzung.} Das Verfahren folgt dem Prinzip von Ridout und
+Linkie \cite{RidoutLinkie2009}, verwendet aber einen umwickelten Gauß-Kern statt des
+von-Mises-Kerns des dort beschriebenen R-Pakets. Diese Abweichung ist zu benennen: Die
+Zahlenwerte sind dadurch nicht unmittelbar mit Ergebnissen vergleichbar, die mit jenem Paket
+erzeugt wurden.
+
+\subsection{Monte-Carlo-Simulation virtueller Kamera-Detektionen}
+\label{subsec:montecarlo}
+
+Der realen Verteilung muss eine simulierte gegenübergestellt werden. Dafür genügt kein
+einzelner Simulationslauf, denn ein Pfad ist eine Zufallsziehung. Erzeugt werden deshalb
+viele unabhängige Läufe.
+
+\paragraph{Aufbau eines Laufs.} Je Lauf wird ein Bär an einem zufällig gewählten
+Kamerastandort gesetzt und über 48~Stunden bewegt. Geschlecht, Altersklasse und Jahresphase
+werden zufällig gezogen. Das ist eine bewusste Entscheidung: Es ist nicht bekannt, welches
+Tier welche Kamera ausgelöst hat, und die Zufallsziehung mittelt über die unbekannte
+Zusammensetzung der Population, statt eine anzunehmen. Ebenso wird die Startstunde
+gleichverteilt über den Tag gezogen, damit die Startzeit die spätere Tagesverteilung nicht
+vorprägt.
+
+\paragraph{Die virtuelle Auslösung.} Nähert sich der simulierte Bär einer beliebigen Kamera
+auf weniger als den Erfassungsradius, zählt das als virtuelle Auslösung und die zugehörige
+Tageszeit wird aufgenommen. Je Zeitschritt wird höchstens eine Auslösung gezählt, auch wenn
+mehrere Kameras in Reichweite liegen.
+
+Der Startpunkt selbst zählt nicht mit. Er ist definitionsgemäß eine Kamera, sodass andernfalls
+jeder Lauf trivialerweise sofort \enquote{erfasst} würde und die Verteilung durch die
+gleichverteilt gezogene Startstunde verfälscht wäre.
+
+\paragraph{Der Beispiellauf in der Oberfläche.} Für die Darstellung auf der Karte wird einer
+der Läufe mitgeschnitten. Entscheidend ist die Auswahlregel: Es ist \emph{nicht} der Lauf mit
+den meisten Treffern, was eine Auswahl zugunsten der schöneren Vorführung wäre, sondern
+schlicht der erste Lauf mit mindestens einem Treffer. Gesucht wird nur innerhalb der ersten
+15~Läufe, damit die Darstellung nicht zufällig einen völlig leeren Lauf zeigt; bleiben auch
+diese ohne Treffer, wird der letzte davon gezeigt und in der Oberfläche als Lauf ohne Treffer
+gekennzeichnet. Die Oberfläche bezeichnet ihn durchgehend als einen zufälligen Lauf und nicht
+als bestes Ergebnis.
+
+\subsection{Unsicherheitsquantifizierung mittels Bootstrap}
+\label{subsec:bootstrap-umsetzung}
+
+Ein einzelner Zahlenwert für~$\Delta$ suggeriert eine Genauigkeit, die bei einer Stichprobe
+von wenigen Dutzend realen Zeitpunkten nicht gerechtfertigt wäre. Angegeben wird deshalb ein
+Intervall.
+
+Verwendet wird das in Abschnitt~\ref{subsec:kamerafallen} beschriebene Bootstrap-Verfahren:
+Aus beiden Stichproben wird jeweils mit Zurücklegen eine neue Stichprobe desselben Umfangs
+gezogen, daraus werden beide Dichten neu geschätzt und~$\Delta$ neu berechnet. Das geschieht
+1000~mal. Aus der Verteilung dieser 1000~Werte ergeben sich das 2{,}5\%- und das
+97{,}5\%-Quantil als Grenzen eines 95\%-Intervalls.
+
+Was das Intervall beantwortet, lässt sich einfach sagen: Wie stark würde sich das Ergebnis
+ändern, wenn die Stichprobe geringfügig anders ausgefallen wäre? Ein breites Intervall ist
+deshalb kein Mangel der Auswertung, sondern eine zutreffende Aussage über die Datenlage.
+
+Die Oberfläche zeigt zusätzlich die Verteilung der 1000~Bootstrap-Werte als Histogramm mit
+eingezeichnetem Punktschätzer und Intervallgrenzen. Das macht unmittelbar sichtbar, wie breit
+die Streuung tatsächlich ist, statt sie auf zwei Zahlen zu reduzieren.
+
+\paragraph{Reproduzierbarkeit und gemeinsame Berechnung.} Sämtliche Zufallsziehungen gehen
+von einem einstellbaren Startwert aus; ein Lauf ist damit exakt wiederholbar
+(Anforderung~N5). Die vollständige Berechnung ist zudem an genau einer Stelle umgesetzt und
+wird sowohl vom Kommandozeilenskript als auch von der Oberfläche aufgerufen. Damit ist
+ausgeschlossen, dass zwei Umsetzungen nebeneinander bestehen, deren Ergebnisse auseinanderlaufen.
+
+% ====================================================================
 \chapter{Diskussion}
+\label{chap:diskussion}
 
-\section{Bewertung des entwickelten Systems}
+Dieses Kapitel bewertet das Ergebnis. Es gleicht zunächst das entwickelte System gegen die in
+Abschnitt~\ref{sec:anforderungen} aufgestellten Anforderungen ab, ordnet anschließend das
+ermittelte Übereinstimmungsmaß ein und benennt zuletzt die Grenzen der Arbeit.
 
-Die im Rahmen dieser Arbeit umgesetzte Zusammenführung der drei Teilsysteme in eine gemeinsame, MapLibre-GL-basierte Kartenanwendung erfüllt die in Abschnitt~1.2 formulierten Ziele in weiten Teilen. Durch den Wechsel von DOM-basiertem Rendering (Folium/Leaflet) zu WebGL-basiertem Rendering (MapLibre GL JS) lassen sich auch größere Datenmengen — insbesondere die gemäß Gleichung~\eqref{eq:punktanzahl} schnell in den Tausenderbereich wachsende Punktzahl der Bewegungssimulation — spürbar flüssiger darstellen als in der ursprünglichen Implementierung.
+\section{Erfüllung der Anforderungen und Bewertung des Systems}
+\label{sec:anforderungserfuellung}
 
-Die Vereinheitlichung der Datenzugriffsschicht sowie die Einführung von serverseitigem Caching (\texttt{st.cache\_data}, \texttt{st.cache\_resource}) haben zudem die wahrgenommene Reaktionsgeschwindigkeit der Anwendung deutlich verbessert: Wiederholte Interaktionen mit unveränderten Filterparametern werden nun aus dem Cache bedient, anstatt die zugrunde liegenden — teils rechenintensiven — Berechnungen (Modellsimulation, Datenbankabfragen, Downsampling) erneut auszuführen.
+\subsection{Abgleich gegen die Anforderungen}
+\label{subsec:abgleich}
+
+Tabelle~\ref{tab:anforderungserfuellung} stellt den Erfüllungsgrad je Anforderung dem
+Abschnitt gegenüber, in dem die Umsetzung beschrieben ist. Von den 17~Anforderungen sind 15
+vollständig erfüllt; die beiden übrigen werden im Anschluss einzeln begründet.
+
+\begin{table}[htbp]
+\centering
+\caption{Erfüllung der Anforderungen aus Abschnitt~\ref{sec:anforderungen}}
+\label{tab:anforderungserfuellung}
+\small
+\begin{tabular}{L{1.1cm} L{6.6cm} L{2.4cm} L{3.0cm}}
+\toprule
+\textbf{Nr.} & \textbf{Anforderung} & \textbf{Erfüllung} & \textbf{Abschnitt} \\
+\midrule
+F1 & Gemeinsame Karte & erfüllt & \ref{subsec:aufbau-karte} \\
+F2 & Filterung & erfüllt & \ref{sec:interaktion} \\
+F3 & Eigene Marker und Flächen & erfüllt & \ref{sec:interaktion} \\
+F4 & Zeitlicher Verlauf & erfüllt & \ref{sec:animation} \\
+F5 & Gegenüberstellung von Modell und Beobachtung & erfüllt & \ref{subsec:synchron} \\
+F6 & Erzeugung zusammenhängender Pfade & erfüllt & \ref{subsec:neuimplementierung} \\
+F7 & Statistischer Vergleich & erfüllt & \ref{sec:tagesrhythmus} \\
+F8 & Einsicht in die Rohdaten & erfüllt & \ref{sec:interaktion} \\
+F9 & Sichtbarkeit neuer Aufnahmen & erfüllt & \ref{subsec:anbindung} \\
+\addlinespace
+N1 & Darstellungsleistung & erfüllt & \ref{subsec:aufbau-karte} \\
+N2 & Keine schwergewichtigen Abhängigkeiten & erfüllt & \ref{subsec:anbindung} \\
+N3 & Einheitliche Datenhaltung & erfüllt & \ref{sec:datenhaltung} \\
+N4 & Nachvollziehbare Fehler & erfüllt & \ref{sec:datenhaltung} \\
+N5 & Reproduzierbarkeit & erfüllt & \ref{subsec:bootstrap-umsetzung} \\
+N6 & Übertragbare Konfiguration & teilweise & \ref{sec:datenhaltung} \\
+N7 & Einheitlicher Bildbestand & erfüllt & \ref{sec:datenhaltung} \\
+N8 & Eindeutigkeit der Ortungen & offen & \ref{subsec:technische-grenzen} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{N6 - teilweise erfüllt.} Die Zugangsdaten werden aus Umgebungsvariablen gelesen,
+sodass sich das System ohne Eingriff in den Quelltext auf einem anderen Rechner betreiben
+lässt. Die bisherigen Werte sind jedoch als Rückfallebene noch im Quelltext hinterlegt. Das
+war während der Entwicklung sinnvoll, weil bestehende Arbeitsplätze unverändert weiterliefen,
+muss vor einem produktiven Einsatz aber entfallen. Hinzu kommt, dass das Zugangswort in der
+Versionsgeschichte des Projekts enthalten ist und deshalb unabhängig von dieser Änderung zu
+wechseln ist.
+
+\paragraph{Anmerkung zu N1.} Die Darstellung bleibt auch dann flüssig bedienbar, wenn
+mehrere Datenebenen mit zusammen mehreren zehntausend Objekten gleichzeitig sichtbar sind;
+die Anforderung gilt damit als erfüllt. Diese Beurteilung beruht jedoch auf der Erprobung im
+Betrieb und nicht auf einer systematischen Messung mit festgelegtem Messaufbau. Ein Vergleich
+beider Technologien unter gleichen Bedingungen wurde nicht durchgeführt, da dazu die
+abgelöste Darstellung für denselben Datenumfang hätte nachgebaut werden müssen. Die Aussage
+ist entsprechend als praktische Beobachtung zu lesen.
+
+\paragraph{N8 - offen.} Die in Abschnitt~\ref{subsec:datenhaltung} festgestellte
+Mehrfachspeicherung der Karpaten-Ortungen wird beim Lesen nicht gefiltert. Die Ursache ist
+bekannt und der Eingriff wäre klein; er unterblieb, weil er sich erst spät im Verlauf der
+Arbeit zeigte und eine Änderung an der zentralen Datenzugriffsschicht ohne anschließende
+vollständige Prüfung aller darauf aufsetzenden Auswertungen nicht vertretbar erschien.
+Abschnitt~\ref{subsec:technische-grenzen} ordnet die Auswirkung ein.
+
+\subsection{Bewertung der Entwurfsentscheidungen}
+\label{subsec:bewertung-entwurf}
+
+Zwei Entscheidungen prägen das System stärker als alle übrigen und verdienen eine
+rückblickende Beurteilung.
+
+\paragraph{Die statische Kartenkomponente.} Die Entscheidung gegen eine bidirektionale
+Komponente (Abschnitt~\ref{subsec:architekturentscheidung}) hat sich im Wesentlichen
+bewährt. Der weitaus größte Teil der Interaktion betrifft allein die Darstellung und läuft
+damit ohne jeden Neuaufbau der Seite ab - schneller, als es mit einem Rückkanal der Fall
+wäre, da dieser jedes Mal einen Durchlauf auf der Serverseite ausgelöst hätte.
+
+Der Preis ist an genau einer Stelle spürbar. Das Anlegen neuer Marker und Flächen erfordert
+den Umweg über die Adresszeile und ein tatsächliches Neuladen der Seite. Das funktioniert,
+ist aber umständlicher als ein Rückgabewert, und es setzt voraus, dass eingebettete
+Komponente und umgebende Seite derselben Herkunft zugerechnet werden. Hinter einem
+vorgeschalteten Server mit abweichendem Namen entfiele diese Voraussetzung, und sowohl der
+Zustandserhalt als auch das Zeichnen würden ausfallen - die Karte selbst bliebe nutzbar.
+Dieser Fall ist vor einem Ausrollen zu prüfen.
+
+Rückblickend war die Entscheidung dennoch richtig, weil ihr Hauptargument außerhalb der
+Technik liegt: Das System soll an der Hochschule weitergeführt werden, und eine Anwendung
+ohne getrennten Übersetzungsschritt ist dafür erheblich zugänglicher.
+
+\paragraph{Die Neuimplementierung der Schrittauswahl.} Die Entscheidung, die Auswahl neu zu
+schreiben statt die vorhandene zu erweitern (Abschnitt~\ref{subsec:neuimplementierung}), war
+weniger eine Wahl als eine Folge des Befunds: Es gab keine Auswahl, die sich hätte erweitern
+lassen. Der Nutzen zeigt sich daran, dass die drei wesentlichen Verbesserungen - empirisch
+geschätzte Richtungstreue, Geländegewichtung und lückenlose Richtungsabdeckung - erst
+dadurch möglich wurden.
+
+Der Preis ist, dass nun zwei Umsetzungen der Schritterzeugung nebeneinander bestehen: die
+der Vorarbeit und die dieser Arbeit. Das ist vertretbar, weil die Vorarbeit unverändert
+erhalten bleibt und die Abweichungen dokumentiert sind, erfordert bei künftigen Änderungen
+aber Aufmerksamkeit.
+
+\section{Wissenschaftliche Einordnung des \texorpdfstring{$\Delta$}{Delta}-Ergebnisses}
+\label{sec:einordnung-delta}
+
+\subsection{Was der Wert aussagt}
+\label{subsec:was-delta-aussagt}
+
+Der Überlappungskoeffizient misst, wie stark sich zwei Tagesaktivitätsverteilungen decken.
+Er nimmt den Wert~0 an, wenn sich die Verteilungen nicht überschneiden, und~1, wenn sie
+identisch sind.
+
+Eine erste Einordnung ergibt sich aus der Betrachtung, was ein beliebiges Modell mindestens
+erreichen würde. Eine über den Tag gleichverteilte simulierte Aktivität erzielt gegenüber
+einer deutlich nachtaktiven realen Verteilung bereits einen merklichen Überlappungswert,
+ohne irgendetwas über das Verhalten der Tiere zu wissen. Ein Wert ist deshalb nicht gegen
+null zu bewerten, sondern gegen diesen trivialen Vergleichsmaßstab.
+
+\subsection{Was der Wert nicht aussagt}
+\label{subsec:was-delta-nicht-aussagt}
+
+Drei Abgrenzungen sind wesentlich, weil sie häufig überlesen werden.
+
+Erstens ist eine Übereinstimmung der Tagesrhythmen \emph{keine} Bestätigung der räumlichen
+Pfade. Verglichen wird ausschließlich die zeitliche Dimension. Zwei Modelle mit völlig
+verschiedenem Raumverhalten können denselben Tagesrhythmus erzeugen.
+
+Zweitens stammt der Tagesrhythmus der Simulation nicht aus dem Modellverhalten im
+eigentlichen Sinne, sondern aus der hinterlegten Geschwindigkeitstabelle. Diese enthält je
+Stunde, Geschlecht, Altersklasse und Jahresphase eine Mediangeschwindigkeit und bestimmt
+damit, wann sich ein simuliertes Tier überhaupt bewegt und folglich wann es eine Kamera
+auslösen kann. Die Übereinstimmung prüft damit in erster Linie, ob die an rumänischen
+Bären gemessenen Tagesrhythmen auf die japanischen Verhältnisse übertragbar sind - eine
+sinnvolle Frage, aber eine engere als \enquote{funktioniert das Modell}.
+
+Drittens ist der Vergleich durch die Stichprobe begrenzt. Bei wenigen Dutzend realen
+Zeitpunkten ist das Bootstrap-Intervall breit, und ein Punktschätzer ohne dieses Intervall
+wäre irreführend. Das Ergebnis ist deshalb als explorativer Befund zu lesen und nicht als
+belastbarer Nachweis.
+
+\subsection{Einordnung gegenüber der Literatur}
+\label{subsec:literatureinordnung}
+
+Das Verfahren selbst ist in der Kamerafallenforschung etabliert
+\cite{RidoutLinkie2009, Rowcliffe2014}. Abweichend von der verbreiteten Umsetzung wird hier
+ein umwickelter Gauß-Kern statt eines von-Mises-Kerns verwendet
+(Abschnitt~\ref{subsec:kde-umsetzung}), weshalb die Zahlenwerte mit Ergebnissen aus jener
+Umsetzung nicht unmittelbar vergleichbar sind.
+
+Eine weitere Besonderheit unterscheidet diese Arbeit von der üblichen Anwendung: Dort werden
+zwei \emph{beobachtete} Verteilungen verglichen, etwa zweier Arten am selben Standort. Hier
+steht einer beobachteten eine \emph{simulierte} Verteilung gegenüber. Der Koeffizient misst
+damit nicht die Überschneidung zweier Tiergruppen, sondern die Übereinstimmung zwischen
+Modell und Beobachtung. Das ist eine zulässige, aber eigenständige Verwendung, die bei der
+Interpretation mitzudenken ist.
 
 \section{Limitationen}
+\label{sec:limitationen}
 
-Trotz der erzielten Verbesserungen weist das System mehrere grundsätzliche Limitationen auf, die im Rahmen dieser Arbeit bewusst nicht adressiert wurden bzw.\ außerhalb des Handlungsspielraums der Anwendung selbst liegen:
+\subsection{Datenbasis}
+\label{subsec:limit-daten}
 
-\begin{itemize}
-    \item \textbf{Zentraler Single Point of Failure:} Sämtliche Teilsysteme mit Ausnahme der Bewegungssimulation sind vollständig von der Erreichbarkeit einer einzelnen, zentral gehosteten MariaDB-Instanz abhängig. Fällt dieser Server aus oder ist er — etwa aufgrund von Netzwerk- oder VPN-Restriktionen — nicht erreichbar, stehen den betroffenen Teilsystemen keinerlei Daten zur Verfügung. Im Rahmen der praktischen Erprobung dieser Arbeit trat dieser Fall konkret auf und unterstreicht, dass für einen produktiven Mehrnutzerbetrieb Redundanz- bzw.\ Monitoring-Konzepte für die zentrale Datenbank sinnvoll wären, die jedoch außerhalb des Aufgabenbereichs dieser Arbeit liegen.
-    \item \textbf{Keine Echtzeit-Kollaboration:} Wie bereits in der Vorarbeit zum Japan-Teilsystem festgestellt \cite{TODO:LorenzBA}, verhindert das System nicht, dass mehrere Nutzer gleichzeitig widersprüchliche Änderungen an denselben Daten vornehmen. Da im Rahmen dieser Arbeit primär die Kartenvisualisierung und weniger die Schreiblogik im Fokus stand, wurde dieses Problem nicht adressiert.
-    \item \textbf{Eingebettete iframe-Architektur statt natives Streamlit-Component:} Die Einbindung von MapLibre GL JS erfolgt über eine vollständig serverseitig gerenderte HTML-Seite, die bei jedem Neudurchlauf des Streamlit-Skripts erneut als Ganzes an den Client übertragen und im Browser neu initialisiert wird. Eine tiefere Integration über ein bidirektionales Streamlit-Custom-Component (mit inkrementeller Datenübertragung) wäre technisch eleganter, hätte jedoch den Implementierungsaufwand dieser Arbeit deutlich überschritten.
-    \item \textbf{Hartkodierte Konfiguration:} Verbindungsparameter zur zentralen Datenbank sind aktuell im Quellcode hinterlegt statt über Umgebungsvariablen oder eine externe Konfigurationsdatei bereitgestellt zu werden, was den Betrieb in unterschiedlichen Umgebungen (Entwicklung, Testbetrieb im Labor, produktiver Einsatz) erschwert.
-\end{itemize}
-% Claude Ende Kapitel 5
+\paragraph{Stichprobenumfang der Kameradaten.} Die schwerwiegendste Einschränkung ist der
+Umfang der realen Auslösezeiten. Er reicht für eine zusammengefasste Auswertung über alle
+Kameras, nicht aber für eine Betrachtung einzelner Standorte - und gerade die wäre
+interessant, da sich Kameras in Waldlage und in Siedlungsnähe im Tagesrhythmus unterscheiden
+dürften. Die Literatur zur Schätzung von Aktivitätskurven weist darauf hin, dass der
+Stichprobenumfang die Genauigkeit solcher Schätzungen maßgeblich bestimmt
+\cite{Rowcliffe2014}.
 
-% ==================== KAPITEL 6 ====================
-% claude begin kapitel 6
+\paragraph{Aufstellung der Kameras.} Die Kameras stehen nicht zufällig im Gelände, sondern
+dort, wo Konflikte mit Menschen erwartet werden, also in Siedlungsnähe und an bekannten
+Wechseln. Für die vorliegende Auswertung ist das weniger gravierend als für
+Dichteschätzungen, die eine zufällige Aufstellung ausdrücklich voraussetzen
+\cite{Rowcliffe2008}. Dennoch bleibt die Einschränkung bestehen: Gemessen wird der
+Tagesrhythmus an Orten menschlicher Nutzung, der sich von dem im unberührten Rückzugsgebiet
+unterscheiden kann.
+
+\paragraph{Qualität der Zeitstempel.} Die Zeitstempel stammen aus der automatisierten
+Auswertung der in die Aufnahmen eingeblendeten Textzeile. Fehlerhaft erkannte Gerätekennungen
+sind in der Auswertung ausgeschlossen worden; eine entsprechende Prüfung der Zeitangaben
+selbst fand nicht statt. Ein Teil der Zeitstempel kann daher fehlerhaft sein, ohne dass dies
+auffiele.
+
+\paragraph{Mehrfach vorliegende Ortungen.} Die in Abschnitt~\ref{subsec:datenhaltung}
+beschriebene Doppelung der Karpaten-Ortungen betrifft die Darstellung und abgeleitete
+Kennzahlen. Für den hier ausgewerteten Vergleich ist sie ohne Belang, da dieser auf den
+Kameradaten und der Geschwindigkeitstabelle beruht, nicht auf der Ortungstabelle. Für
+künftige Auswertungen auf dieser Tabelle ist sie jedoch zu beheben.
+
+\subsection{Modellannahmen}
+\label{subsec:limit-modell}
+
+\paragraph{Artunterschied.} Die japanischen Kameras stehen im Verbreitungsgebiet des
+Asiatischen Schwarzbären, während das Bewegungsmodell aus Daten des Europäischen Braunbären
+stammt. Das ist die weitreichendste inhaltliche Vereinfachung dieser Arbeit. Sie ist bewusst
+getroffen, weil für die japanische Art keine vergleichbaren Trajektoriendaten vorlagen, und
+sie wird ausdrücklich nicht als Gleichsetzung der beiden Arten verstanden. Jede Aussage über
+die japanischen Verhältnisse steht unter diesem Vorbehalt.
+
+\paragraph{Übertragene Parameter.} Dasselbe gilt für die Geschwindigkeitstabelle und die
+gemessene Richtungstreue: Beide stammen aus den Karpaten. Die Richtungstreue ist zudem, wie
+in Abschnitt~\ref{subsec:richtungstreue} dargelegt, bei kurzen Schritten vom Messfehler der
+GPS-Ortung überlagert, sodass die dort angegebenen negativen Werte als Obergrenze der
+tatsächlichen Gewundenheit zu lesen sind.
+
+\paragraph{Vereinfachtes Geländemodell.} Die Gewichte der Geländebewertung sind von Hand
+gesetzte Näherungen und keine aus Daten geschätzten Koeffizienten. Eine integrierte
+Step-Selection-Analyse \cite{Avgar2016} würde diese Werte aus beobachteten Schritten
+schätzen, statt sie vorzugeben, und ist damit der methodisch saubere Weg. Er setzt jedoch
+Trajektoriendaten aus dem betrachteten Gebiet voraus, die für Japan gerade fehlen.
+
+Hinzu kommt eine räumliche Grenze: Das lokal vorgehaltene Gelände umfasst die Kamerastandorte
+zuzüglich eines Puffers. Bei Simulationsläufen über 48~Stunden verlassen Bären dieses Gebiet,
+und die Geländegewichtung entfällt dort stillschweigend. Für belastbare Läufe über 24~Stunden
+hinaus müsste der Puffer vergrößert werden.
+
+\subsection{Technische Grenzen des Systems}
+\label{subsec:technische-grenzen}
+
+\paragraph{Zeitstempel als Zeichenketten.} Die Zeitstempel liegen weiterhin als Zeichenketten
+in der Datenbank. Eine Umstellung auf einen echten Zeitstempeltyp hätte eine Datenmigration
+und die Anpassung aller darauf aufsetzenden Abfragen erfordert; der Nutzen wäre vor allem bei
+deutlich größeren Datenmengen spürbar geworden. Die Einschränkung bleibt bestehen: Eine
+Filterung nach Zeiträumen ist auf der Serverseite nur eingeschränkt wirksam.
+
+\paragraph{Mehrfach vorliegende Ortungen.} Die Abfragen auf der Ortungstabelle filtern die
+Doppelungen nicht heraus. Praktisch wirkt sich das derzeit kaum aus, weil dieselbe Position
+zweimal übereinander gezeichnet wird und optisch nicht auffällt. Bedeutsam würde es, sobald
+aus dieser Tabelle Kennzahlen abgeleitet werden - etwa Schrittlängen oder Tagesdistanzen --,
+da dann Schritte der Länge null in die Statistik eingingen.
+
+\paragraph{Abhängigkeit von externen Diensten.} Kartenkacheln, Höhenmodell und die beiden
+Vergleichsdatenquellen stammen von Diensten außerhalb der Hochschule. Jeder davon kann
+ausfallen oder seine Nutzungsbedingungen ändern. Das System ist darauf vorbereitet, da ein
+Ausfall jeweils zu einem Hinweis und nicht zu einem Abbruch führt, aber die betroffene
+Funktion steht dann nicht zur Verfügung.
+
+\paragraph{Keine Mehrbenutzerabsicherung.} Mehrere Personen können gleichzeitig mit dem
+System arbeiten, da die Daten zentral liegen. Schreibende Zugriffe - das Anlegen und Löschen
+von Markern und Flächen - sind jedoch nicht gegen gleichzeitige Bearbeitung abgesichert.
+Bei der zu erwartenden Zahl gleichzeitiger Nutzender in einer Forschungsgruppe ist das
+vertretbar, wäre bei breiterem Einsatz aber nachzuholen.
+
+% ====================================================================
 \chapter{Fazit und Ausblick}
+\label{chap:fazit}
 
 \section{Zusammenfassung der Ergebnisse}
+\label{sec:zusammenfassung}
 
-Im Rahmen dieser Arbeit wurden drei zuvor unabhängig voneinander entwickelte Teilsysteme zur Wildtierforschung — ein Bärenabschreckungssystem, eine Bewegungssimulation sowie ein Bildextraktionssystem — zu einer gemeinsamen, Multi-Layer-fähigen Kartenplattform zusammengeführt. Zentrale technische Grundlage hierfür war der Wechsel der Kartenvisualisierung von der DOM-basierten Bibliothek Folium/Leaflet zur WebGL-basierten Bibliothek MapLibre GL JS, der eine deutlich performantere Darstellung großer, aus Simulation und GPS-Tracking resultierender Datenmengen ermöglichte. Ergänzend wurde die zuvor heterogene Datenhaltung (verteilte SQLite-Datenbanken, CSV-Dateien, unterschiedliche Tabellenschemata) in eine zentrale MariaDB-Datenbank konsolidiert und die Fehlerbehandlung der Datenzugriffsschicht so überarbeitet, dass Verbindungsprobleme für Nutzende nachvollziehbar sichtbar werden, anstatt zu stillen, schwer diagnostizierbaren Datenlücken zu führen. Durch gezieltes serverseitiges Caching sowie eine klare Trennung zwischen serverseitigen Filteroperationen und clientseitigen Darstellungsinteraktionen konnte zudem die wahrgenommene Reaktionsgeschwindigkeit der Anwendung spürbar verbessert werden.
+Ziel dieser Arbeit war, drei getrennt entstandene Teilsysteme der rechnergestützten
+Naturbeobachtung in einer gemeinsamen Kartenplattform zusammenzuführen und darüber hinaus
+Werkzeuge bereitzustellen, mit denen sich simulierte Bewegungen gegen reale Beobachtungsdaten
+prüfen lassen. Beides wurde erreicht.
+
+\paragraph{Integration und technische Basis.} An die Stelle zweier voneinander unabhängiger
+Karteninstanzen ist eine gemeinsame, auf MapLibre~GL~JS beruhende Kartenkomponente getreten,
+auf der alle Datenbestände gleichzeitig liegen und einzeln ein- und ausgeblendet werden
+können. Das Bewegungsmodell, das zuvor ausschließlich als eigenständiger Quelltext ohne
+Oberfläche vorlag, ist in die Anwendung eingebunden; die zuvor auf zwei Tabellen verteilten
+Kameraaufnahmen sind in einer zusammengeführt, und die Zugangsdaten sind aus dem Quelltext
+ausgelagert. Ergänzt wurden zwei unabhängige öffentliche Datenquellen als Vergleichsebene.
+
+Zwei Entwurfsentscheidungen prägen das Ergebnis. Die Karte ist als statische Komponente ohne
+Rückkanal eingebunden, was die Interaktion schnell macht und den Betrieb ohne zusätzliche
+Übersetzungsschritte ermöglicht; der fehlende Rückkanal wird für die wenigen schreibenden
+Vorgänge über die Adresszeile umgangen. Und die Schrittauswahl des Bewegungsmodells wurde
+neu geschrieben statt erweitert, weil die Vorarbeit zwar Kandidaten erzeugte, unter ihnen
+aber keine Auswahl traf.
+
+\paragraph{Analyse- und Validierungswerkzeuge.} Der zeitliche Ablauf einer Bewegung ist
+abspielbar geworden, und zwar in synchroner Gegenüberstellung von realer Trajektorie und
+Modellausgabe für dasselbe Tier, denselben Tag und dieselben Zeitpunkte. Die Richtungswahl
+des Modells wurde auf drei Wegen verbessert: durch eine aus 46.161~realen Schrittpaaren
+geschätzte, nach Schrittlänge aufgeschlüsselte Richtungstreue, durch eine Geländegewichtung
+anhand lokal vorgehaltener OpenStreetMap-Daten und durch die Beseitigung einer systematischen
+Winkelverzerrung, die zuvor ein Drittel aller Richtungen unerreichbar machte.
+
+Für die Übertragung auf die japanischen Kameradaten wurde ein Prüfverfahren entwickelt, das
+dem Datentyp angemessen ist: Da sich aus punktuellen Detektionen keine Pfade rekonstruieren
+lassen, wird nicht räumlich, sondern zeitlich verglichen - über den Überlappungskoeffizienten
+der Tagesaktivitätsverteilungen, mit einer Unsicherheitsangabe aus einem Bootstrap-Verfahren.
+
+\paragraph{Befunde zu den Vorarbeiten.} Im Verlauf der Analyse traten mehrere Eigenschaften
+der übernommenen Arbeiten zutage, die für den weiteren Betrieb von Bedeutung sind: die
+fehlende Auswahl zwischen den erzeugten Kandidatenschritten, die auf eine Stunde festgelegte
+Schrittlänge bei tatsächlich ungleichmäßigen Ortungsabständen, die doppelt geführten
+Bildtabellen und die mehrfach vorliegenden Ortungen. Sie sind in
+Kapitel~\ref{chap:analyse} und~\ref{chap:diskussion} jeweils dort benannt, wo sie
+Entwurfsentscheidungen begründen.
+
+\paragraph{Einordnung.} Das System ist ein Arbeitswerkzeug für ein Forschungsteam, kein
+Vorhersagewerkzeug. Die simulierten Pfade sind Zufallsziehungen aus einem Modell, und das
+ermittelte Übereinstimmungsmaß ist angesichts des Stichprobenumfangs ein explorativer Befund.
+Der Beitrag dieser Arbeit liegt darin, dass sich diese Frage überhaupt stellen und
+quantitativ beantworten lässt - im Ausgangszustand war weder das eine noch das andere
+möglich.
 
 \section{Ausblick auf zukünftige Erweiterungen}
+\label{sec:ausblick}
 
-Aufbauend auf dem in dieser Arbeit geschaffenen Fundament ergeben sich mehrere sinnvolle Erweiterungsrichtungen für zukünftige Arbeiten:
+\paragraph{Bewegungsparameter der japanischen Art.} Die weitreichendste Vereinfachung dieser
+Arbeit ist die Übertragung von Parametern des Europäischen Braunbären auf ein Gebiet des
+Asiatischen Schwarzbären. Liegen für die japanische Art veröffentlichte Werte zu
+Geschwindigkeit und Richtungsverhalten vor, ließen sie sich unmittelbar einsetzen - die
+Geschwindigkeitstabelle ist nach Art gegliedert und müsste lediglich um einen Eintrag
+ergänzt werden. Der Vergleich beider Parametersätze gegen dieselben Kameradaten wäre für
+sich genommen ein lohnender Untersuchungsgegenstand.
 
-\begin{itemize}
-    \item \textbf{Robustere Infrastruktur:} Einführung eines Monitorings bzw.\ eines automatisierten Health-Checks für die zentrale Datenbank sowie ggf.\ eines Redundanz- oder Fallback-Konzepts, um die in Abschnitt~5.2 beschriebene Ausfallanfälligkeit zu reduzieren.
-    \item \textbf{Natives Streamlit-Custom-Component:} Ablösung der aktuellen \texttt{iframe}-basierten Karteneinbindung durch ein bidirektionales Custom Component, das eine inkrementelle Datenübertragung sowie eine direkte Kommunikation zwischen Kartenzustand und Python-Backend ermöglicht, ohne bei jeder Interaktion die vollständige Karte neu aufzubauen.
-    \item \textbf{Erweiterung auf weitere Arten und Regionen:} Die entwickelte Architektur ist bewusst generisch gehalten (gemeinsame Datenzugriffsschicht, generisches GeoJSON-Format) und ließe sich grundsätzlich auf weitere Tierarten oder Untersuchungsgebiete übertragen.
-    \item \textbf{Echtzeit-Kollaborationsfunktionen:} Ergänzung von Konfliktlösungsmechanismen bzw.\ Live-Synchronisation für den Fall, dass mehrere Forschende gleichzeitig Markierungen oder Gebiete bearbeiten.
-\end{itemize}
-% Claude Ende Kapitel 6
+\paragraph{Datengestützte Geländegewichtung.} Die Gewichte der Geländebewertung sind von Hand
+gesetzt. Stünden Trajektoriendaten aus dem japanischen Gebiet zur Verfügung, ließen sich die
+Koeffizienten über eine integrierte Step-Selection-Analyse \cite{Avgar2016} aus beobachteten
+Schritten schätzen; dafür bestehen eingeführte Werkzeuge \cite{Signer2019}. Damit entfiele
+die derzeit schwächste Stelle der Modellerweiterung.
 
-\begin{thebibliography}{99}
-\bibitem{TODO:LorenzBA} Lorenz, M.: \emph{[Titel der Bachelorarbeit einfügen]}, OTH Regensburg, [Jahr].
-\bibitem{TODO:BreuBA} Breu, F.: \emph{[Titel der Bachelorarbeit einfügen]}, [Jahr].
-\bibitem{TODO:LelchatBA} Lelchat, A.: \emph{[Titel der Arbeit einfügen]}, [Jahr].
-\bibitem{TODO:GISGrundlagen} [Quelle zu GIS-Grundlagen / Geodaten einfügen]
-\bibitem{TODO:WebMercator} [Quelle zu WGS84/Web-Mercator einfügen]
-\bibitem{TODO:GeoJSONSpec} \emph{The GeoJSON Format}, RFC 7946, IETF, 2016.
-\bibitem{TODO:VectorTiles} [Quelle zu Vector Tiles einfügen]
-\bibitem{TODO:LeafletDoc} \emph{Leaflet -- an open-source JavaScript library for interactive maps}, offizielle Dokumentation, \url{https://leafletjs.com}.
-\bibitem{TODO:MapboxGL} [Quelle zu Mapbox GL JS einfügen]
-\bibitem{TODO:MapLibreGH} \emph{MapLibre GL JS}, GitHub-Repository, \url{https://github.com/maplibre/maplibre-gl-js}.
-\bibitem{TODO:StyleSpec} \emph{Mapbox Style Specification}, offizielle Dokumentation.
-\bibitem{TODO:SSFLiteratur} [Quelle zu Step Selection Functions in der Bewegungsökologie einfügen, z.\,B. Fortin et al.]
-\end{thebibliography}
+\paragraph{Erweiterung des vorgehaltenen Geländes.} Unabhängig davon ist das lokal
+vorgehaltene Gebiet zu vergrößern. Derzeit umfasst es die Kamerastandorte zuzüglich eines
+Puffers, den Simulationsläufe über 48~Stunden verlassen. Der Vorgang ist bereits als Werkzeug
+umgesetzt und muss lediglich mit einem größeren Puffer erneut ausgeführt werden.
+
+\paragraph{Kameraindividuelle Auswertung.} Wächst der Bestand an Aufnahmen, wird eine
+Auswertung je Kamera möglich. Interessant wäre insbesondere der Vergleich zwischen Kameras in
+Waldlage und in Siedlungsnähe: Unterscheiden sich deren Tagesrhythmen, wäre das ein Hinweis
+auf eine Verhaltensanpassung an menschliche Anwesenheit - eine Frage, die mit der
+vorliegenden Datenmenge nicht beantwortet werden kann.
+
+\paragraph{Technische Anschlusspunkte.} Drei Punkte sind unabhängig von den inhaltlichen
+Fragen zu erledigen: die Umstellung der Zeitstempel auf einen echten Zeitstempeltyp mitsamt
+serverseitiger Zeitraumfilterung, die Herausfilterung der mehrfach vorliegenden Ortungen und
+das Entfernen der Rückfallwerte für die Zugangsdaten aus dem Quelltext. Der dritte Punkt ist
+vor einem produktiven Einsatz zwingend, zusammen mit dem Wechsel des in der Versionsgeschichte
+enthaltenen Zugangsworts.
+
+% ====================================================================
+\printbibliography[title={Literatur}]
 
 \end{document}
