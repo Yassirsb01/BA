@@ -434,37 +434,6 @@ except Exception as e:
 
 
 # ============================================================
-# WOLF/LYNX (BfN) and BEAR SIGHTINGS (GBIF): external, public APIs.
-# No VPN required, unlike the MariaDB subsystems, but behind its own
-# checkbox in the sidebar for offline work or to avoid the requests.
-# ============================================================
-wolf_lynx_data = None
-gbif_bears_data = None
-
-with st.sidebar.expander("External reference data", expanded=False):
-    load_external = st.checkbox(
-        "Load wolf/lynx (BfN) and bear sightings (GBIF)",
-        value=True,
-        help="Free, public data sources. Wolf and lynx records from the "
-             "German Federal Agency for Nature Conservation, bear sightings "
-             "from GBIF (Germany and Romania).",
-    )
-
-if load_external:
-    try:
-        from import_bfn_wolf_lynx import get_wolf_lynx_geojson
-        wolf_lynx_data = get_wolf_lynx_geojson()
-    except Exception as e:
-        st.sidebar.warning(f"Wolf and lynx data (BfN) unavailable: {e}")
-
-    try:
-        from import_gbif_bears import get_gbif_bears_geojson
-        gbif_bears_data = get_gbif_bears_geojson()
-    except Exception as e:
-        st.sidebar.warning(f"Bear sightings (GBIF) unavailable: {e}")
-
-
-# ============================================================
 # Render the map (empty on start; selection and zoom happen on the map)
 # ============================================================
 # One-way browser message bridge for saving map drawings. This is not a
@@ -483,8 +452,6 @@ ml.render_maplibre(
     japan=japan_data,
     carpathian=carpathian_data,
     simulation=simulation_data,
-    wolf_lynx=wolf_lynx_data,
-    gbif_bears=gbif_bears_data,
     basemap=_restored_basemap,        # last chosen style, otherwise satellite
     terrain3d=_restored_terrain3d,    # carry over the 3D toggle state
     center=_restored_center,          # last camera position, otherwise default
@@ -510,7 +477,7 @@ st.markdown("### Data behind the current map view")
 
 _table_tabs = st.tabs([
     "Japan devices", "Japan markers and areas", "Carpathian GPS",
-    "Simulation", "Wolf and lynx", "GBIF bear sightings",
+    "Simulation",
 ])
 
 with _table_tabs[0]:
@@ -570,18 +537,6 @@ with _table_tabs[2]:
 with _table_tabs[3]:
     df = geojson_to_dataframe((simulation_data or {}).get("points"))
     st.caption(f"{len(df)} simulated points (real plus alternatives)" if not df.empty else "No data loaded.")
-    if not df.empty:
-        st.dataframe(df, width="stretch")
-
-with _table_tabs[4]:
-    df = geojson_to_dataframe(wolf_lynx_data)
-    st.caption(f"{len(df)} grid cells (wolf and lynx)" if not df.empty else "No data loaded (is \"External reference data\" enabled?).")
-    if not df.empty:
-        st.dataframe(df, width="stretch")
-
-with _table_tabs[5]:
-    df = geojson_to_dataframe(gbif_bears_data)
-    st.caption(f"{len(df)} bear sightings (DE and RO)" if not df.empty else "No data loaded (is \"External reference data\" enabled?).")
     if not df.empty:
         st.dataframe(df, width="stretch")
 

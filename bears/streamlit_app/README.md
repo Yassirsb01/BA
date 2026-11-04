@@ -18,7 +18,6 @@ Experimente zur Bewegungssimulation erweitert.
 | **Japan Bear Deterrent** | Abschreckungsgeräte, Kamerastandorte, Kamerabilder, frei gezeichnete Marker und Gebiete (Vorarbeit Marcel Lorenz) |
 | **Carpathian Bears** | GPS-Halsbanddaten von 13 Braunbären in den rumänischen Karpaten, 59 997 Ortungen von August 2011 bis Juli 2015 |
 | **Bewegungssimulation** | Schritt-Simulation auf Basis empirischer Schrittlängen (Vorarbeit Fabian Bräu) |
-| **Externe Vergleichsdaten** | Wolf- und Luchsvorkommen des BfN, Bärensichtungen aus GBIF |
 
 Dazu zwei Analyse-Seiten:
 
@@ -71,7 +70,7 @@ Seitennavigation.
 | Was | Wofür | Ohne? |
 |---|---|---|
 | **OTH-VPN** | MariaDB `ursus`: Kamerabilder, Foto-Zeitstempel, Marker und Gebiete | Anwendung startet trotzdem; Carpathian-Daten kommen aus CSV, Simulation läuft vollständig, nur die DB-Inhalte fehlen |
-| **Internet** | Kartenkacheln (Esri, OpenFreeMap, Carto), Höhenmodell (Mapterhorn), BfN-WFS, GBIF | Karte bleibt leer bzw. ohne 3D; die Simulation selbst braucht kein Internet |
+| **Internet** | Kartenkacheln (Esri, OpenFreeMap, Carto), Höhenmodell (Mapterhorn) | Karte bleibt leer bzw. ohne 3D; die Simulation selbst braucht kein Internet |
 | **Overpass API** | Nur beim Vorabladen der Geländedaten | Siehe Abschnitt 5 |
 
 Die Anwendung ist durchgehend so gebaut, dass eine fehlende Verbindung zu
@@ -154,8 +153,6 @@ Der Server braucht ausgehenden Zugriff auf:
 | `172.20.39.9:3306` | MariaDB | keine Bilder, Marker, Foto-Zeitstempel |
 | `server.arcgisonline.com`, `tiles.openfreemap.org`, `basemaps.cartocdn.com` | Kartenkacheln | Karte bleibt grau |
 | `tiles.mapterhorn.com` | Höhenmodell für 3D | 3D-Schalter meldet "nicht erreichbar", 2D funktioniert |
-| `geodienste.bfn.de` | Wolf- und Luchsdaten | Layer bleibt leer, Warnung in der Seitenleiste |
-| `api.gbif.org` | Bärensichtungen | dito |
 | `overpass-api.de` u. a. | nur für `tools/prefetch_terrain.py` | nicht nötig, wenn der Cache mitgeliefert wird |
 
 Die Kartenkacheln lädt **der Browser des Nutzers**, nicht der Server. Wenn
@@ -251,8 +248,11 @@ streamlit_app/
   activity_overlap.py           Tagesrhythmus-Vergleich, Bootstrap
   terrain_cache.py              Lokaler OpenStreetMap-Geländecache
 
-  import_bfn_wolf_lynx.py       Wolf- und Luchsdaten vom BfN
-  import_gbif_bears.py          Bärensichtungen aus GBIF
+  import_bfn_wolf_lynx.py       Wolf- und Luchsdaten vom BfN, eigenstaendig
+  import_gbif_bears.py          Bärensichtungen aus GBIF, eigenstaendig
+                                Beide sind nicht mehr an die Karte
+                                angebunden: sie lagen ausserhalb des
+                                Themas der Arbeit. Als Skript ausfuehrbar.
 
   bear_simulation/              Vorarbeit Fabian Bräu, unverändert,
                                 plus eigene Integrationsschicht __init__.py
@@ -270,7 +270,7 @@ streamlit_app/
 
 - `[ok]`, `[note]`, `[warning]`, `[error]` für Ausgaben von Skripten
 - `[modulname]` für Diagnosemeldungen einzelner Module, etwa
-  `[terrain_cache]` oder `[GBIF]`
+  `[terrain_cache]` oder `[japan_comparison]`
 
 ---
 

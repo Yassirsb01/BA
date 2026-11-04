@@ -77,7 +77,7 @@ def main():
 
     cameras = jc.load_japan_cameras()
     if not cameras:
-        raise RuntimeError("No Japanese cameras available: check 2024Bear/ReadMe.csv")
+        raise RuntimeError("No Japanese camera locations found. They come from MariaDB (deterrent_devices), so the university VPN has to be active.")
 
     db = WildlifeDatabase()
     if not ao.check_db_reachable_bounded(db):

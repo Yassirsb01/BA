@@ -232,7 +232,7 @@ def run_monte_carlo_virtual_detections(
     """
     cameras = load_japan_cameras()
     if not cameras:
-        raise RuntimeError("No Japanese camera locations found; is 2024Bear/ReadMe.csv missing?")
+        raise RuntimeError("No Japanese camera locations found. They come from MariaDB (deterrent_devices), so the university VPN has to be active.")
 
     dbcon = DatabaseConnection(SIM_DB_PATH)
     bear_speeds = BearSpeeds(dbcon)
@@ -474,8 +474,13 @@ def compute_comparison(
     that there can never be two implementations whose results diverge.
 
     Does NOT raise when the database is unavailable. It reports this
-    through result["db_ok"] = False and result["delta"] = None but still
-    runs the simulation, which is useful for the map animation on its own.
+    through result["db_ok"] = False and result["delta"] = None.
+
+    Note that nothing at all can be computed without the database any
+    more: the camera locations come from MariaDB too, so neither the real
+    photo times nor the simulation are available. Before the locations
+    moved out of 2024Bear/ReadMe.csv the simulation could still run on its
+    own.
     """
     db = WildlifeDatabase()
     db_ok = check_db_reachable_bounded(db)
@@ -488,11 +493,21 @@ def compute_comparison(
         from terrain_cache import TerrainCache
         terrain_cache = TerrainCache()
 
-    sim_hours, captured_run = run_monte_carlo_virtual_detections(
-        n_runs=n_runs, hours_per_run=hours_per_run,
-        detection_radius_m=detection_radius_m, seed=seed,
-        terrain_cache=terrain_cache, capture_run=capture_run,
-    )
+    try:
+        sim_hours, captured_run = run_monte_carlo_virtual_detections(
+            n_runs=n_runs, hours_per_run=hours_per_run,
+            detection_radius_m=detection_radius_m, seed=seed,
+            terrain_cache=terrain_cache, capture_run=capture_run,
+        )
+    except RuntimeError as e:
+        # No camera locations. Since they come from MariaDB the simulation
+        # cannot run either, so db_ok is reported as False and the caller
+        # shows its "database unreachable" note. Raising here would take
+        # down a page that is merely missing one of its panels; see the
+        # promise in this function's docstring.
+        print(f"[activity_overlap] Simulation not possible: {e}")
+        sim_hours, captured_run = [], None
+        db_ok = False
 
     result = {
         "db_ok": db_ok, "n_real": len(real_hours), "n_excluded": n_excluded,

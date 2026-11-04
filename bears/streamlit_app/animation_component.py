@@ -29,7 +29,7 @@ Display:
 Base maps:
   - Satellite (Esri World Imagery) for terrain context, the same source
     already used by carpathian_bears.py
-  - Positron, Liberty and Dark Matter as vector alternatives
+  - Positron, Liberty and Dark as vector alternatives
   - Optional 3D mode: elevation model (Mapterhorn, free and without an
     API key, the source used by the official MapLibre 3D example) plus
     camera pitch. Deliberately opt-in because it requires additional
@@ -54,7 +54,7 @@ _ESRI_IMAGERY_SOURCE = {
     "tiles": ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
     "tileSize": 256,
     "maxzoom": ESRI_NATIVE_MAXZOOM,
-    "attribution": "Satellite imagery: &copy; Esri, Maxar, Earthstar Geographics",
+    "attribution": "Satellite imagery: Esri, Vantor, Earthstar Geographics and the GIS User Community",
 }
 
 # Transparent label and boundary layer, to keep orientation on satellite
@@ -64,7 +64,7 @@ _ESRI_REFERENCE_SOURCE = {
     "tiles": ["https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"],
     "tileSize": 256,
     "maxzoom": ESRI_NATIVE_MAXZOOM,
-    "attribution": "&copy; Esri",
+    "attribution": "Labels: Esri, HERE, Garmin, &copy; OpenStreetMap contributors and the GIS User Community",
 }
 
 _SATELLITE_STYLE = {
@@ -85,9 +85,9 @@ _SATELLITE_LABELS_STYLE = {
 BASEMAP_STYLES = {
     "Satellite": _SATELLITE_STYLE,
     "Satellite + labels": _SATELLITE_LABELS_STYLE,
-    "Positron": "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+    "Positron": "https://tiles.openfreemap.org/styles/positron",
     "Liberty": "https://tiles.openfreemap.org/styles/liberty",
-    "Dark Matter": "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+    "Dark": "https://tiles.openfreemap.org/styles/dark",
 }
 
 # Slightly above the native resolution, to allow closer zoom without the

@@ -21,21 +21,40 @@ import streamlit.components.v1 as components
 DEFAULT_BASEMAP = "Esri Satellite"
 
 BASEMAP_NAMES = ["Esri Satellite", "Esri Satellite + labels",
-                 "Liberty", "Bright", "Positron", "Dark", "OSM Raster"]
+                 "Liberty", "Bright", "Positron", "Dark"]
 
 # Free elevation data without an API key (the source used by the official
 # MapLibre 3D terrain example), identical to animation_component.py and
 # japan_map_component.py so that all three maps behave the same.
 TERRAIN_TILEJSON = "https://tiles.mapterhorn.com/tilejson.json"
 
+# Attribution required by the two Esri services, worded as the services
+# themselves state it in their "copyrightText" field. Both are defined
+# here once and reused, so that the wording cannot drift apart between
+# the styles.
+ESRI_IMAGERY_ATTRIBUTION = (
+    "Satellite imagery: Esri, Vantor, Earthstar Geographics "
+    "and the GIS User Community")
+ESRI_REFERENCE_ATTRIBUTION = (
+    "Labels: Esri, HERE, Garmin, (c) OpenStreetMap contributors "
+    "and the GIS User Community")
+
 
 def _build_styles():
-    """All styles as a dict {name: URL string or style object}."""
+    """
+    All styles as a dict {name: URL string or style object}.
+
+    All four vector styles come from OpenFreeMap. That service is free of
+    charge, needs neither registration nor an API key, and carries its
+    attribution in its own TileJSON, so MapLibre displays it without any
+    help from this file. Keeping to a single vector provider means a
+    single set of terms to observe.
+    """
     vector = {
         "Liberty":  "https://tiles.openfreemap.org/styles/liberty",
         "Bright":   "https://tiles.openfreemap.org/styles/bright",
-        "Positron": "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-        "Dark":     "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+        "Positron": "https://tiles.openfreemap.org/styles/positron",
+        "Dark":     "https://tiles.openfreemap.org/styles/dark",
     }
     # Important for raster sources: maxzoom MUST be set, otherwise
     # MapLibre requests tiles that do not exist when zooming in. Esri does
@@ -44,24 +63,13 @@ def _build_styles():
     # maxzoom, MapLibre upscales the last available tile instead:
     # slightly blurry, but always an image.
     raster = {
-        "OSM Raster": {
-            "version": 8,
-            "sources": {"osm": {
-                "type": "raster",
-                "tiles": ["https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                          "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                          "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png"],
-                "tileSize": 256, "maxzoom": 19,
-                "attribution": "(c) OpenStreetMap contributors"}},
-            "layers": [{"id": "osm", "type": "raster", "source": "osm"}],
-        },
         "Esri Satellite": {
             "version": 8,
             "sources": {"esri": {
                 "type": "raster",
                 "tiles": ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
                 "tileSize": 256, "maxzoom": 17,
-                "attribution": "Satellite imagery (c) Esri, Maxar, Earthstar Geographics"}},
+                "attribution": ESRI_IMAGERY_ATTRIBUTION}},
             "layers": [{"id": "esri", "type": "raster", "source": "esri"}],
         },
         "Esri Satellite + labels": {
@@ -71,11 +79,12 @@ def _build_styles():
                     "type": "raster",
                     "tiles": ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
                     "tileSize": 256, "maxzoom": 17,
-                    "attribution": "Satellite imagery (c) Esri, Maxar, Earthstar Geographics"},
+                    "attribution": ESRI_IMAGERY_ATTRIBUTION},
                 "esri-ref": {
                     "type": "raster",
                     "tiles": ["https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"],
-                    "tileSize": 256, "maxzoom": 17},
+                    "tileSize": 256, "maxzoom": 17,
+                    "attribution": ESRI_REFERENCE_ATTRIBUTION},
             },
             "layers": [
                 {"id": "esri", "type": "raster", "source": "esri"},
@@ -94,8 +103,6 @@ def render_maplibre(
     japan=None,
     carpathian=None,
     simulation=None,
-    wolf_lynx=None,
-    gbif_bears=None,
     basemap: str = DEFAULT_BASEMAP,
     terrain3d: bool = False,
     center=None,
@@ -108,8 +115,6 @@ def render_maplibre(
     japan = japan or {}
     carpathian = carpathian or {}
     simulation = simulation or {}
-    wolf_lynx = wolf_lynx or {}
-    gbif_bears = gbif_bears or {}
 
     jp_deterrents = japan.get("deterrents", _empty_fc())
     jp_markers    = japan.get("markers", _empty_fc())
@@ -118,17 +123,10 @@ def render_maplibre(
     cp_paths      = carpathian.get("paths", _empty_fc())
     sim_points    = simulation.get("points", _empty_fc())
     sim_paths     = simulation.get("paths", _empty_fc())
-    # wolf_lynx and gbif_bears already arrive as a finished
-    # FeatureCollection rather than a dict of sub-categories, so they are
-    # taken over directly.
-    wolf_lynx_fc  = wolf_lynx if wolf_lynx.get("type") == "FeatureCollection" else _empty_fc()
-    gbif_bears_fc = gbif_bears if gbif_bears.get("type") == "FeatureCollection" else _empty_fc()
 
     has_japan = bool(japan)
     has_carpathian = bool(carpathian)
     has_simulation = bool(simulation)
-    has_wolf_lynx = bool(wolf_lynx_fc.get("features"))
-    has_gbif_bears = bool(gbif_bears_fc.get("features"))
 
     if center is None:
         center = (45.0, 80.0)
@@ -153,8 +151,6 @@ def render_maplibre(
         "cp_paths":      json.dumps(cp_paths),
         "sim_points":    json.dumps(sim_points),
         "sim_paths":     json.dumps(sim_paths),
-        "wolf_lynx":     json.dumps(wolf_lynx_fc),
-        "gbif_bears":    json.dumps(gbif_bears_fc),
     }
 
     # Which layers should already be ticked when rendering?
@@ -186,18 +182,6 @@ def render_maplibre(
         checkbox_rows += (f'<label><input type="checkbox" id="tg-simulation"{chk} /> '
                           f'Simulation <span class="cnt">{n}</span>'
                           f'<span class="dot" style="background:#e8830c"></span></label>')
-    if has_wolf_lynx:
-        n = len(wolf_lynx_fc.get("features", []))
-        chk = " checked" if "wolf_lynx" in default_checked else ""
-        checkbox_rows += (f'<label><input type="checkbox" id="tg-wolf-lynx"{chk} /> '
-                          f'Wolf/Lynx (BfN) <span class="cnt">{n}</span>'
-                          f'<span class="dot" style="background:#5b3a29"></span></label>')
-    if has_gbif_bears:
-        n = len(gbif_bears_fc.get("features", []))
-        chk = " checked" if "gbif_bears" in default_checked else ""
-        checkbox_rows += (f'<label><input type="checkbox" id="tg-gbif-bears"{chk} /> '
-                          f'Bear sightings (GBIF) <span class="cnt">{n}</span>'
-                          f'<span class="dot" style="background:#c77b2e"></span></label>')
     if not checkbox_rows:
         checkbox_rows = '<div class="muted">No data loaded.</div>'
 
@@ -292,9 +276,7 @@ def render_maplibre(
       cp_points:     {data["cp_points"]},
       cp_paths:      {data["cp_paths"]},
       sim_points:    {data["sim_points"]},
-      sim_paths:     {data["sim_paths"]},
-      wolf_lynx:     {data["wolf_lynx"]},
-      gbif_bears:    {data["gbif_bears"]}
+      sim_paths:     {data["sim_paths"]}
     }};
 
     const GROUPS = {{
@@ -303,11 +285,7 @@ def render_maplibre(
       carpathian: {{ id:'tg-carpathian', layers:['cp-points','cp-paths'],
                      fcs:[DATA.cp_points, DATA.cp_paths] }},
       simulation: {{ id:'tg-simulation', layers:['sim-points','sim-paths'],
-                     fcs:[DATA.sim_points, DATA.sim_paths] }},
-      wolf_lynx:  {{ id:'tg-wolf-lynx',  layers:['wolf-lynx-fill','wolf-lynx-line'],
-                     fcs:[DATA.wolf_lynx] }},
-      gbif_bears: {{ id:'tg-gbif-bears', layers:['gbif-bears-points'],
-                     fcs:[DATA.gbif_bears] }}
+                     fcs:[DATA.sim_points, DATA.sim_paths] }}
     }};
 
     const TERRAIN_TILEJSON = "{TERRAIN_TILEJSON}";
@@ -466,8 +444,6 @@ def render_maplibre(
       addSrc('cp_paths',      DATA.cp_paths);
       addSrc('sim_points',    DATA.sim_points);
       addSrc('sim_paths',     DATA.sim_paths);
-      addSrc('wolf_lynx',     DATA.wolf_lynx);
-      addSrc('gbif_bears',    DATA.gbif_bears);
 
       // JAPAN
       addLayerSafe({{ id:'jp-polygons-fill', type:'fill', source:'jp_polygons',
@@ -518,22 +494,6 @@ def render_maplibre(
           'circle-stroke-width': ['case',['==',['get','type'],'real'],2,1],
           'circle-stroke-color': '#fff'
         }} }});
-
-      // WOLF/LYNX (BfN, occupied 10x10 km grid cells as polygons).
-      // Deliberately only a thin outline instead of a solid fill: a cell
-      // means "at least one C1/C2 record somewhere in here", not a precise
-      // position. A solid fill would suggest an accuracy the data does not
-      // support, and several adjacent cells would read as one continuous
-      // area.
-      addLayerSafe({{ id:'wolf-lynx-fill', type:'fill', source:'wolf_lynx',
-        paint:{{ 'fill-color':['coalesce',['get','color'],'#5b3a29'],'fill-opacity':0.08 }} }});
-      addLayerSafe({{ id:'wolf-lynx-line', type:'line', source:'wolf_lynx',
-        paint:{{ 'line-color':['coalesce',['get','color'],'#5b3a29'],'line-width':1.2,'line-opacity':0.8 }} }});
-
-      // BEAR SIGHTINGS (GBIF, points for DE and RO)
-      addLayerSafe({{ id:'gbif-bears-points', type:'circle', source:'gbif_bears',
-        paint:{{ 'circle-radius':5,'circle-opacity':0.85,'circle-stroke-width':1,'circle-stroke-color':'#fff',
-                 'circle-color':['coalesce',['get','color'],'#5b3a29'] }} }});
     }}
 
     // Restore visibility from the checkboxes; the DOM is preserved
@@ -579,27 +539,6 @@ def render_maplibre(
         if (isReal) details += '<b>Time:</b> '+(p.timestamp||'')+'<br><b>Season:</b> '+(p.season||'')+'<br><b>Step length:</b> '+(p.length_m?Math.round(p.length_m)+' m':'')+'<br>';
         if (isAlt)  details += '<b>Step no.:</b> '+(p.step_idx||'')+'<br><b>Simulated length:</b> '+(p.length_m?Math.round(p.length_m)+' m':'')+'<br><b>Heading:</b> '+(p.angle?Math.round(p.angle)+' deg':'')+'<br>';
         pop(e,'<h3>'+title+' <span style=\\"display:inline-block;width:10px;height:10px;border-radius:50%;background:'+col+';vertical-align:middle\\"></span></h3>'+details); }});
-
-      map.on('click','wolf-lynx-fill',(e)=>{{ const p=e.features[0].properties||{{}};
-        const isWolf = (p.REFERENCESPECIESNAME||'').toLowerCase().includes('lupus') || p.species==='wolf';
-        const title  = isWolf ? 'Wolf' : 'Lynx';
-        pop(e,'<h3>'+title+' (BfN monitoring)</h3>'+
-              '<b>Grid cell:</b> '+(p.ID_LOCALID||p.GmlID||'')+
-              '<br><span style=\\"font-size:12px;color:#555\\">At least one confirmed record (C1/C2: genetics, '+
-              'photo, track or kill) somewhere in this 10x10 km cell, not an exact position.</span>'+
-              '<br><span style=\\"font-size:11px;color:#777\\">Source: geodienste.bfn.de, free to use</span>'); }});
-      map.on('mouseenter','wolf-lynx-fill',()=>map.getCanvas().style.cursor='pointer');
-      map.on('mouseleave','wolf-lynx-fill',()=>map.getCanvas().style.cursor='');
-
-      map.on('click','gbif-bears-points',(e)=>{{ const p=e.features[0].properties||{{}};
-        const link = p.gbif_url ? '<br><a href=\\"'+p.gbif_url+'\\" target=\\"_blank\\" rel=\\"noopener\\">View record on GBIF</a>' : '';
-        const img = p.image_url ? '<br><img src=\\"'+p.image_url+'\\" style=\\"max-width:220px;max-height:160px;border-radius:6px;margin-top:6px;display:block\\" loading=\\"lazy\\" onerror=\\"this.style.display=\\'none\\'\\" />' : '';
-        pop(e,'<h3>'+(p.scientific_name||'Ursus arctos')+'</h3>'+
-              '<b>Country:</b> '+(p.country||'')+
-              '<br><b>Date:</b> '+(p.event_date||'')+
-              '<br><b>Source:</b> '+(p.institution||'')+link+img); }});
-      map.on('mouseenter','gbif-bears-points',()=>map.getCanvas().style.cursor='pointer');
-      map.on('mouseleave','gbif-bears-points',()=>map.getCanvas().style.cursor='');
     }}
 
     // -------------------------------------------------------
@@ -638,9 +577,7 @@ def render_maplibre(
     const ZOOM_TARGETS = {{
       japan:      {{ center: [139.93, 37.48], zoom: 11 }},
       carpathian: {{ center: null, zoom: 8 }},   // dynamic via fitBounds (the data has valid coordinates)
-      simulation: {{ center: null, zoom: 8 }},   // dynamic via fitBounds
-      wolf_lynx:  {{ center: null, zoom: 6 }},   // dynamic, covers all of Germany
-      gbif_bears: {{ center: null, zoom: 5 }}    // dynamic, covers DE and RO
+      simulation: {{ center: null, zoom: 8 }}    // dynamic via fitBounds
     }};
 
     function navigateToGroup(groupKey) {{
@@ -834,7 +771,7 @@ def render_maplibre(
         const cb = document.getElementById(GROUPS[key].id);
         if (cb) cb.addEventListener('change', e => onToggle(key, e.target.checked));
       }};
-      bind('japan'); bind('carpathian'); bind('simulation'); bind('wolf_lynx'); bind('gbif_bears');
+      bind('japan'); bind('carpathian'); bind('simulation');
 
       // -------------------------------------------------------
       // Base map change: calling map.once('style.load', ...) after every

@@ -476,64 +476,10 @@ def _maplibre_html(
     if mode == "heat":
         toggle_html += '<label><input type="checkbox" id="tog-heat" checked/><span class="lsym" style="background:linear-gradient(#f00,#ff0);border-radius:2px;"></span>Heatmap</label>'
 
-    osm_raster_style = """
-{
-  "version": 8,
-  "sources": {
-    "osm": {
-      "type": "raster",
-      "tiles": ["https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png"],
-      "tileSize": 256,
-      "attribution": "© OpenStreetMap contributors"
-    }
-  },
-  "layers": [
-    { "id": "osm", "type": "raster", "source": "osm" }
-  ]
-}
-""".strip()
-
-    carto_light_style = """
-{
-  "version": 8,
-  "sources": {
-    "carto": {
-      "type": "raster",
-      "tiles": ["https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-                "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-                "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-                "https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"],
-      "tileSize": 256,
-      "attribution": "© OpenStreetMap contributors © CARTO"
-    }
-  },
-  "layers": [
-    { "id": "carto", "type": "raster", "source": "carto" }
-  ]
-}
-""".strip()
-
-    carto_dark_style = """
-{
-  "version": 8,
-  "sources": {
-    "carto": {
-      "type": "raster",
-      "tiles": ["https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-                "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-                "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-                "https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"],
-      "tileSize": 256,
-      "attribution": "© OpenStreetMap contributors © CARTO"
-    }
-  },
-  "layers": [
-    { "id": "carto", "type": "raster", "source": "carto" }
-  ]
-}
-""".strip()
+    # Strassenkarten von OpenFreeMap: kostenlos, ohne Schluessel, die
+    # Quellenangabe liefert der Dienst in seinem eigenen TileJSON mit.
+    ofm_positron_url = "https://tiles.openfreemap.org/styles/positron"
+    ofm_dark_url = "https://tiles.openfreemap.org/styles/dark"
 
     esri_sat_style = """
 {
@@ -543,7 +489,7 @@ def _maplibre_html(
       "type": "raster",
       "tiles": ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
       "tileSize": 256,
-      "attribution": "Tiles © Esri"
+      "attribution": "Satellite imagery: Esri, Vantor, Earthstar Geographics and the GIS User Community"
     }
   },
   "layers": [
@@ -551,8 +497,6 @@ def _maplibre_html(
   ]
 }
 """.strip()
-
-    demo_vector_style_url = "https://demotiles.maplibre.org/style.json"
 
     basemap_js = basemap.strip()
     label_lang_js = label_lang.strip()
@@ -614,21 +558,17 @@ def _maplibre_html(
     const POINTS = {points_json};
     const PATHS  = {paths_json};
 
-    const OSM_RASTER_STYLE = {osm_raster_style};
-    const CARTO_LIGHT_STYLE = {carto_light_style};
-    const CARTO_DARK_STYLE = {carto_dark_style};
+    const OFM_POSITRON_URL = "{ofm_positron_url}";
+    const OFM_DARK_URL = "{ofm_dark_url}";
     const ESRI_SAT_STYLE = {esri_sat_style};
-    const DEMO_VECTOR_URL = "{demo_vector_style_url}";
 
     const BASEMAP = "{basemap_js}";
     const LABEL_LANG = "{label_lang_js}";
 
     function pickStyle() {{
-      if (BASEMAP === "OSM Raster") return OSM_RASTER_STYLE;
-      if (BASEMAP === "Carto Positron") return CARTO_LIGHT_STYLE;
-      if (BASEMAP === "Carto Dark") return CARTO_DARK_STYLE;
+      if (BASEMAP === "Dark") return OFM_DARK_URL;
       if (BASEMAP === "Esri Satellite") return ESRI_SAT_STYLE;
-      return DEMO_VECTOR_URL;
+      return OFM_POSITRON_URL;
     }}
 
     const map = new maplibregl.Map({{
@@ -1084,11 +1024,9 @@ def display_carpathian_bears_section():
             basemap = st.selectbox(
                 "Basemap",
                 options=[
-                    "OSM Raster",
-                    "Carto Positron",
-                    "Carto Dark",
+                    "Positron",
+                    "Dark",
                     "Esri Satellite",
-                    "MapLibre Demo Vector",
                 ],
                 index=0,
             )
@@ -1220,8 +1158,8 @@ def display_carpathian_bears_section():
                         st.dataframe(tracking_data[show_cols].head(300))
 
         st.caption(
-            "Note: label language only applies to vector styles, for example "
-            "MapLibre Demo Vector. Raster maps (OSM, Carto, Esri) carry labels "
+            "Note: the label language only applies to the vector styles "
+            "(Positron, Dark). The Esri satellite view carries its labels "
             "baked into the tiles."
         )
 

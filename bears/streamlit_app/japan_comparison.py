@@ -20,8 +20,9 @@ Known limitations, all deliberate:
     validation.
 
 Data sources:
-  - Camera locations: bear_simulation/2024Bear/ReadMe.csv, the real GPS
-    coordinates of the Japanese devices.
+  - Camera locations: MariaDB, table deterrent_devices, the same rows the
+    main map draws. Needs the university VPN; there is no file fallback,
+    so map and simulation can never show a camera in two places.
   - Speed model: bear_simulation/data/database.db, table bear_speeds,
     source "Carpathians".
   - Real photo timestamps: MariaDB through the existing WildlifeDatabase
@@ -29,7 +30,6 @@ Data sources:
     components.
 """
 
-import csv
 import math
 import os
 import random
@@ -50,7 +50,6 @@ from geopy.distance import geodesic                       # noqa: E402
 from wildlife_db_mariadb import WildlifeDatabase           # noqa: E402
 from terrain_cache import TerrainCache                      # noqa: E402
 
-CAMERAS_CSV = os.path.join(_BASE, "2024Bear", "ReadMe.csv")
 SIM_DB_PATH = os.path.join(_BASE, "data", "database.db")
 
 # Values taken from database.db (bear_speeds), not assumed:
@@ -80,26 +79,73 @@ def _normalize_device_id(raw_id: str) -> str:
     return raw_id
 
 
-def load_japan_cameras(csv_path: str = CAMERAS_CSV) -> list[dict]:
-    """Load the real camera and device locations from 2024Bear/ReadMe.csv."""
-    cameras = []
-    if not os.path.exists(csv_path):
-        print(f"[warning] Camera CSV not found: {csv_path}")
-        return cameras
+# Fixed processing order of the cameras.
+#
+# Why this list exists at all: run_monte_carlo_virtual_detections() picks
+# the starting camera of every run with cameras[rng.integers(0, n)], so the
+# POSITION of a camera in the list decides where a run begins. A fixed seed
+# therefore only reproduces a result as long as the order is stable. A
+# database returns rows in whatever order the server chooses unless ORDER BY
+# says otherwise, so the order has to be pinned down here.
+#
+# The order is the one of the original survey document (2024Bear/ReadMe.csv).
+# It is kept so that results stay comparable with the runs made before the
+# camera locations moved from that file into MariaDB. It carries no meaning
+# beyond that.
+CAMERA_ORDER = [
+    "003002", "003001", "003000", "002007", "002006",
+    "002005", "002004", "002001", "002002", "002003",
+    "004001", "004000", "001012", "001009", "001003",
+    "001011", "001010", "001001", "001000", "001013",
+]
 
-    with open(csv_path, encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            try:
-                lat = float(row["DD-Latitude"])
-                lng = float(row["DD-Longitude"])
-            except (KeyError, ValueError, TypeError):
-                continue
-            raw_device_id = (row.get("Directory name") or "").strip()
-            if not raw_device_id:
-                continue
-            device_id = _normalize_device_id(raw_device_id)
-            cameras.append({"device_id": device_id, "lat": lat, "lng": lng})
+# Coordinates this close to Null Island are a missing GPS fix, not a
+# position; japan_deterrents.py filters them the same way.
+_MIN_VALID_DEGREES = 0.01
+
+
+def load_japan_cameras(db: "WildlifeDatabase | None" = None) -> list[dict]:
+    """
+    Load the Japanese camera locations from MariaDB (deterrent_devices).
+
+    Returns the devices that carry a usable GPS fix, ordered by
+    CAMERA_ORDER. Devices with lat/lng at 0/0 are left out: 13 of the 33
+    rows never received coordinates, and a bear started at Null Island
+    would corrupt the statistics.
+
+    Returns an empty list when the database cannot be reached. Callers
+    report that to the user; there is deliberately no file fallback, so
+    that the map and the simulation can never disagree about where a
+    camera stands.
+    """
+    if db is None:
+        db = WildlifeDatabase()
+
+    try:
+        rows = db.execute_query(
+            "SELECT id, directory_name, lat, lng FROM deterrent_devices")
+    except Exception as e:
+        print(f"[japan_comparison] Camera locations not retrievable: {e}")
+        return []
+
+    by_id = {}
+    for row in rows or []:
+        raw_id = row.get("directory_name") or row.get("id") or ""
+        device_id = _normalize_device_id(raw_id)
+        try:
+            lat = float(row["lat"])
+            lng = float(row["lng"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if abs(lat) < _MIN_VALID_DEGREES and abs(lng) < _MIN_VALID_DEGREES:
+            continue
+        by_id[device_id] = {"device_id": device_id, "lat": lat, "lng": lng}
+
+    # Known cameras first, in the fixed order. Anything the database holds
+    # on top of that is appended by ID, so a device added later shows up
+    # instead of silently disappearing.
+    cameras = [by_id.pop(d) for d in CAMERA_ORDER if d in by_id]
+    cameras.extend(by_id[d] for d in sorted(by_id))
     return cameras
 
 
@@ -851,7 +897,7 @@ def run_experiment(
     """
     cameras = load_japan_cameras()
     if not cameras:
-        return {"error": "No Japanese camera locations found; is 2024Bear/ReadMe.csv missing?"}
+        return {"error": "No Japanese camera locations found. They come from MariaDB (deterrent_devices), so the university VPN has to be active."}
 
     start_camera_index = max(0, min(start_camera_index, len(cameras) - 1))
     start_cam = cameras[start_camera_index]

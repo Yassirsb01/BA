@@ -75,7 +75,7 @@ def camera_bbox(buffer_km: float) -> tuple[float, float, float, float]:
     from japan_comparison import load_japan_cameras
     cams = load_japan_cameras()
     if not cams:
-        raise RuntimeError("Keine Kamerastandorte gefunden (bear_simulation/2024Bear/ReadMe.csv?).")
+        raise RuntimeError("No Japanese camera locations found. They come from MariaDB (deterrent_devices), so the university VPN has to be active.")
     lats = [c["lat"] for c in cams]
     lons = [c["lng"] for c in cams]
     lat_mid = (min(lats) + max(lats)) / 2

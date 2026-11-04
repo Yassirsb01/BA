@@ -35,15 +35,19 @@ def main():
     delta = result["delta"]
     low, high = result["ci_low"], result["ci_high"]
     print(f"Reale Fotozeitpunkte: {n_real}", flush=True)
-    print(f"Virtuelle Kameraeintritte: {n_sim}", flush=True)
+    print(f"Virtuelle Detektionszeitpunkte: {n_sim}", flush=True)
     print(f"Delta: {delta:.6f}", flush=True)
     print(f"95%-Bootstrap-Intervall: [{low:.6f}; {high:.6f}]", flush=True)
 
     # Veraltete Statistiken sollen nicht unbemerkt die Abschlussabbildungen ersetzen.
-    if (n_real, n_sim) != (50, 247) or abs(delta - 0.5539343654333979) > 0.002:
+    # Referenzlauf seit der Umstellung der Kamerastandorte auf die
+    # MariaDB-Tabelle deterrent_devices (20 Geraete mit gueltiger Position).
+    # Der vorherige Stand, 50 reale Aufnahmen und Delta 0,554, stammte noch
+    # aus den Koordinaten der Vermessungsdatei ReadMe.csv.
+    if (n_real, n_sim) != (49, 257) or abs(delta - 0.5253001997957124) > 0.002:
         raise RuntimeError(
             "Die Ergebnisse stimmen nicht mit dem geprueften Referenzlauf "
-            "(50 reale, 247 virtuelle, Delta ca. 0,554) ueberein. "
+            "(49 reale, 257 virtuelle, Delta ca. 0,525) ueberein. "
             "Abbildungen nicht geschrieben; bitte zuerst die Ursache pruefen."
         )
 
@@ -53,13 +57,14 @@ def main():
     ax.axvspan(0, 6, alpha=0.06, color="grey", label="Nacht (18–6 Uhr)")
     ax.axvspan(18, 24, alpha=0.06, color="grey")
     ax.plot(grid, real, linewidth=2.2, label=f"Reale Kameraaufnahmen (n={n_real})")
-    ax.plot(grid, sim, linewidth=2.2, label=f"Virtuelle Kameraeintritte (n={n_sim})")
+    ax.plot(grid, sim, linewidth=2.2, label=f"Virtuelle Detektionszeitpunkte (n={n_sim})")
     ax.fill_between(grid, np.minimum(real, sim), alpha=0.20, color="grey", label=f"Überlappung (Δ={delta:.3f})")
     ax.set_xlim(0, 24)
     ax.set_xticks(range(0, 25, 2))
     ax.set_xlabel("Tageszeit (Uhr)")
     ax.set_ylabel("Geschätzte Dichte")
-    ax.set_title("Zeitliche Verteilung realer und virtueller Kameraereignisse")
+    ax.set_title("Zeitliche Verteilung realer Kameraaufnahmen und "
+                 "virtueller Detektionszeitpunkte")
     ax.legend(loc="best", fontsize=9)
     fig.tight_layout()
     out_dir = Path(__file__).resolve().parent

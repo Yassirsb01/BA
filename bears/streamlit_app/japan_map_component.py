@@ -35,11 +35,12 @@ BASEMAP_STYLES = {
         "sources": {"esri-imagery": {
             "type": "raster",
             "tiles": ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
-            "tileSize": 256, "maxzoom": 17, "attribution": "Tiles &copy; Esri",
+            "tileSize": 256, "maxzoom": 17,
+            "attribution": "Satellite imagery: Esri, Vantor, Earthstar Geographics and the GIS User Community",
         }},
         "layers": [{"id": "esri-imagery", "type": "raster", "source": "esri-imagery"}],
     },
-    "Positron": "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+    "Positron": "https://tiles.openfreemap.org/styles/positron",
     "Liberty": "https://tiles.openfreemap.org/styles/liberty",
 }
 
@@ -326,7 +327,9 @@ def render_japan_map(
     const map = new maplibregl.Map({{
       container:'map', style:STYLES["{basemap}"], center:startCamCoords, zoom:13,
       maxPitch:85,   // without this the camera cannot be pitched into the 3D view
-      attributionControl:false,
+      // The map data providers require their attribution to stay
+      // visible. compact shows it as an "i" that expands.
+      attributionControl:{{ compact:true }},
     }});
     // visualizePitch shows the pitch in the compass; otherwise it is hard
     // to tell which inclination the view is currently at.

@@ -95,8 +95,22 @@ with hand-set preferences, not coefficients fitted to observed habitat use.
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
-def _load_cameras():
+def _load_cameras_cached():
     return load_japan_cameras()
+
+
+def _load_cameras():
+    """
+    Camera locations, cached for an hour.
+
+    An empty result is NOT kept: it means the database was unreachable,
+    and caching that would keep the page broken for an hour after the VPN
+    is back. The cache entry is dropped so the next run tries again.
+    """
+    cameras = _load_cameras_cached()
+    if not cameras:
+        _load_cameras_cached.clear()
+    return cameras
 
 
 @st.cache_data(ttl=600, show_spinner=False)
@@ -216,13 +230,17 @@ with st.sidebar:
 
     if not db_ok:
         st.warning(
-            "MariaDB not reachable (is the VPN active?). The simulation still works, "
-            "because the camera locations come from a local file, but without the VPN "
-            "there are no real photo times to compare against."
+            "MariaDB not reachable (is the VPN active?). Both the camera "
+            "locations and the real photo times come from the database, so "
+            "this page needs the VPN. The Carpathian pages still work."
         )
 
     if not cameras:
-        st.error("No camera locations found. Is 2024Bear/ReadMe.csv present in the bear_simulation folder?")
+        st.error(
+            "No camera locations available. They are read from MariaDB "
+            "(table deterrent_devices), which needs the university VPN. "
+            "Start the VPN and reload the page."
+        )
     else:
         cam_labels = {c["device_id"]: f"Kamera {c['device_id']}" for c in cameras}
         selected_cam_id = st.selectbox(
@@ -340,7 +358,7 @@ else:
 
     with _tabs[0]:
         df_cam = pd.DataFrame(cameras)
-        st.caption(f"{len(df_cam)} camera locations from 2024Bear/ReadMe.csv")
+        st.caption(f"{len(df_cam)} camera locations from MariaDB (deterrent_devices)")
         st.dataframe(df_cam, width="stretch")
 
     with _tabs[1]:

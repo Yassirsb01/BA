@@ -293,8 +293,8 @@ class JapanDeterrentSystem:
         center_lng = float(self.map_center[1])
         center_lat = float(self.map_center[0])
 
-        # REAL MAP STYLE (CartoDB Positron)
-        style_url = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+        # Street map style (OpenFreeMap Positron)
+        style_url = "https://tiles.openfreemap.org/styles/positron"
 
         html = f"""
 <!DOCTYPE html>
